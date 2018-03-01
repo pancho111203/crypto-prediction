@@ -21,13 +21,13 @@ public_client = gdax.PublicClient()
 def getCandles(coinPair, granularity, start, end, save=True):
     filename = 'data/candles/{}_{}_{}_{}.json'.format(coinPair, granularity, start, end)
     if os.path.isfile(filename):
-        logger.debug('Loading data from file: {}'.format(filename))
+        logger.info('Loading data from file: {}'.format(filename))
         with open(filename, 'r') as f:
             allCandles = json.load(f)
         
     else:
         def requestCandlesAndSave(startTime_, endTime_):
-            logger.debug('Getting data from {} to {}'.format(startTime_.isoformat(), endTime_.isoformat()))
+            logger.info('Getting data from {} to {}'.format(startTime_.isoformat(), endTime_.isoformat()))
             for attempt in range(0, 10):   
                 if attempt > 0:
                     logger.debug('Attempt {}'.format(attempt+1))
@@ -76,7 +76,7 @@ def getCandles(coinPair, granularity, start, end, save=True):
             if not(os.path.isdir("data")):
                 os.system("mkdir data; cd data; mkdir candles")
     
-            logger.debug('Saving data on file: {}'.format(filename))
+            logger.info('Saving data on file: {}'.format(filename))
             with open(filename, 'a+') as f:
                 json.dump(allCandles, f)
 
