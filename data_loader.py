@@ -19,7 +19,7 @@ public_client = gdax.PublicClient()
 #Otherwise, your request will be rejected. 
 #These values correspond to timeslices representing one minute, five minutes, fifteen minutes, one hour, six hours, and one day, respectively.
 def getCandles(coinPair, granularity, start, end, save=True):
-    filename = 'data/candles/{}_{}_{}_{}.json'.format(coinPair, granularity, start, end)
+    filename = os.path.join(os.path.dirname(__file__), 'data/candles/{}_{}_{}_{}.json'.format(coinPair, granularity, start, end))
     if os.path.isfile(filename):
         logger.info('Loading data from file: {}'.format(filename))
         with open(filename, 'r') as f:
