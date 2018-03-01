@@ -72,9 +72,13 @@ def getCandles(coinPair, granularity, start, end, save=True):
     allCandles += requestCandlesAndSave(currentStartTime, endTime)
     
     if save:
+        if not(os.path.isdir("data")):
+            os.system("mkdir data; cd data; mkdir candles")
+
         logger.debug('Saving data on file: {}'.format(filename))
         with open(filename, 'a+') as f:
-            json.dump(allCandles, f) 
+            json.dump(allCandles, f)
+
         
     return allCandles
 
@@ -83,6 +87,6 @@ if __name__ == '__main__':
     logger.setLevel(logging.DEBUG)
     if len(logger.handlers) == 0:
         logger.addHandler(logging.StreamHandler())
-    candles = getCandles('ETH-USD', granularity=60, start='2018-02-27T12:50:25+01:00', end='2018-02-28T12:50:25+01:00', save=False)
+    candles = getCandles('ETH-USD', granularity=60, start='2018-02-27T12:50:25+01:00', end='2018-02-28T12:50:25+01:00', save=True)
     print('Results: {}'.format(len(candles)))
     print('First time: {}, Last time: {}'.format(datetime.datetime.fromtimestamp(candles[0][0]), datetime.datetime.fromtimestamp(candles[-1][0])))
