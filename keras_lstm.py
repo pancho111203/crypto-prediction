@@ -1,22 +1,27 @@
+# -*- coding: utf-8 -*-
 import pandas
 import matplotlib.pyplot as plt
 import data_loader
-
-# dataset = pandas.read_csv('international-airline-passengers.csv', usecols=[1], engine='python', skipfooter=3)
-dataset = data_loader.getCandles('ETH-USD', 60, '2018-02-27T00:00:25+01:00', '2018-02-28T23:58:25+01:00')[['open']]
-print(dataset)
-# plt.plot(dataset)
-# plt.show()
-
 import numpy
 import math
 import keras
+import plotly.offline as py
+import plotly.graph_objs as go
+import os
+from keras.optimizers import Adam
 
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
+
+
+"""Get Data"""
+dataset = data_loader.getCandles('ETH-USD', 60, '2018-02-27T00:00:25+01:00', '2018-02-28T23:58:25+01:00')[['open']]
+# print(dataset)
+# plt.plot(dataset)
+# plt.show()
 
 """###Normalize data"""
 
@@ -67,8 +72,9 @@ model.add(Dense(1))
 
 """###Define the loss and optimizer. Train the model."""
 
-model.compile(loss='mean_squared_error', optimizer='adam')
-model.fit(trainX, trainY, epochs=25, batch_size=1, verbose=2)
+adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
+model.compile(loss='mean_squared_error', optimizer=adam)
+model.fit(trainX, trainY, epochs=25, batch_size=1, verbose=1)
 
 """###Now check the predicted values for training and test data"""
 
@@ -81,21 +87,51 @@ trainPredict = scaler.inverse_transform(trainPredict)
 trainY = scaler.inverse_transform([trainY])
 testPredict = scaler.inverse_transform(testPredict)
 testY = scaler.inverse_transform([testY])
+
 # calculate root mean squared error
 trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
 print('Train Score: %.2f RMSE' % (trainScore))
 testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
 print('Test Score: %.2f RMSE' % (testScore))
+
+
 # shift train predictions for plotting
 trainPredictPlot = numpy.empty_like(dataset)
 trainPredictPlot[:, :] = numpy.nan
-trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
+# trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
+trainPredictPlot[:len(trainPredict), :] = trainPredict
+
 # shift test predictions for plotting
 testPredictPlot = numpy.empty_like(dataset)
 testPredictPlot[:, :] = numpy.nan
-testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1, :] = testPredict
+# testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1, :] = testPredict
+testPredictPlot[len(trainPredict)+2:len(trainPredict)+len(testPredict)+2, :] = testPredict
+
 # plot baseline and predictions
-plt.plot(scaler.inverse_transform(dataset))
-plt.plot(trainPredictPlot)
-plt.plot(testPredictPlot)
-plt.show()
+
+# plt.plot(scaler.inverse_transform(dataset))
+# plt.plot(trainPredictPlot)
+# plt.plot(testPredictPlot)
+# plt.show()
+
+data = go.Scatter(
+    x=pandas.DataFrame(scaler.inverse_transform(dataset)).index,
+    y=pandas.DataFrame(scaler.inverse_transform(dataset))[0],
+    name='Original Data'
+)
+
+train = go.Scatter(
+    x=pandas.DataFrame(trainPredictPlot).index,
+    y=pandas.DataFrame(trainPredictPlot)[0],
+    name='Train Predict Data'
+)
+
+test = go.Scatter(
+    x=pandas.DataFrame(testPredictPlot).index,
+    y=pandas.DataFrame(testPredictPlot)[0],
+    name='Test Predict Data'
+)
+
+data_plot = [data, train, test]
+fig = go.Figure(data=data_plot)
+py.plot(fig, filename=os.path.join(os.path.dirname(__file__), 'plots/lstm_results.html'))
