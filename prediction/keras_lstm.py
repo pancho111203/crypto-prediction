@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import pandas
 import matplotlib.pyplot as plt
 import data_loader
@@ -7,7 +10,6 @@ import math
 import keras
 import plotly.offline as py
 import plotly.graph_objs as go
-import os
 from keras.optimizers import Adam
 
 from keras.models import Sequential
@@ -134,4 +136,4 @@ test = go.Scatter(
 
 data_plot = [data, train, test]
 fig = go.Figure(data=data_plot)
-py.plot(fig, filename=os.path.join(os.path.dirname(__file__), 'plots/lstm_results.html'))
+py.plot(fig, filename=os.path.join(os.path.dirname(__file__), '../plots/lstm_results.html'))
