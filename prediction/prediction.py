@@ -2,166 +2,161 @@
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-
-import time
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.backends.cudnn as cudnn
-
-import os
-import argparse
-
-from model import Model
-from torch.autograd import Variable
+import pandas
+import matplotlib.pyplot as plt
 import data_loader
+import numpy
+import math
+import argparse
+import keras
+import plotly.offline as py
+import plotly.graph_objs as go
+from keras.optimizers import Adam
+
+from keras.callbacks import ModelCheckpoint
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import LSTM
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
 
-checkpoint_name = 'starter.ckpt'
+checkpoint_name = 'starter'
 
-parser = argparse.ArgumentParser(description='LSTM Crypto Prediction')
-parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
-parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
+
+parser = argparse.ArgumentParser(description='Predict crypto prices')
+parser.add_argument('-v', '--visualize', action='store_const',
+                   const=True, default=False,
+                   help='Only visualize results of previously saved model')
+
 args = parser.parse_args()
 
-use_cuda = torch.cuda.is_available()
-best_acc = 0  # best test accuracy
-start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
-# Data
-print('==> Preparing data..')
+"""Get Data"""
+dataset = data_loader.getCandles('ETH-USD', 60, '2018-02-27T00:00:25+01:00', '2018-02-28T23:58:25+01:00')[['open']]
+# print(dataset)
+# plt.plot(dataset)
+# plt.show()
 
-###Load data
-dataset = data_loader.getCandles('ETH-USD', granularity=60, start='2018-02-27T12:50:25+01:00', end='2018-02-28T12:50:25+01:00', save=True)
-dataset.reset_index(inplace=True)
-del dataset[0]
-###Normalize data
+"""###Normalize data"""
+
+# normalize the dataset
 scaler = MinMaxScaler(feature_range=(0, 1))
 dataset = scaler.fit_transform(dataset)
 
-###Split data into training and test. Training is the past, test is the future.
+# plt.plot(dataset)
+# plt.show()
+
+"""###Split data into training and test. Training is the past, test is the future."""
+
+# split into train and test sets
 train_size = int(len(dataset) * 0.7)
 test_size = len(dataset) - train_size
 train, test = dataset[0:train_size,:], dataset[train_size:len(dataset),:]
 print(len(train), len(test))
 
-###Convert data into pairs: (features, targets)
+"""###Convert data into pairs: (features, targets)"""
+
+# convert an array of values into a dataset matrix
 def create_dataset(dataset, look_back=1):
-    dataX, dataY = [], []
-    for i in range(len(dataset)-look_back-1):
-        a = dataset[i:(i+look_back)]
-        dataX.append(a)
-        dataY.append(dataset[i + look_back, 3])
-    return numpy.array(dataX), numpy.array(dataY)
+	dataX, dataY = [], []
+	for i in range(len(dataset)-look_back-1):
+		a = dataset[i:(i+look_back), 0]
+		dataX.append(a)
+		dataY.append(dataset[i + look_back, 0])
+	return numpy.array(dataX), numpy.array(dataY)
+
 
 # reshape into X=t and Y=t+1
 look_back = 1
 trainX, trainY = create_dataset(train, look_back)
 testX, testY = create_dataset(test, look_back)
 
-###Reshape data to fit the LSTM expected format (samples, time_steps, features)
+"""###Reshape data to fit the LSTM expected format (samples, time_steps, features)"""
+
+# reshape input to be [samples, time steps, features]
 trainX = numpy.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
 testX = numpy.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
 
+"""###Build a very simple LSTM with 4 nodes connected to a 1 neuron output layer:"""
 
-#Normalize
+# create and fit the LSTM network
+model = Sequential()
+model.add(LSTM(4, input_shape=(1, look_back)))
+model.add(Dense(1))
 
-#trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
-#trainloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True, num_workers=2)
+"""### Checkpointing """
+checkpoint_path = os.path.join(os.path.dirname(__file__), '../checkpoint/{}.hdf5'.format(checkpoint_name))
+checkpointer = ModelCheckpoint(filepath=checkpoint_path, verbose=1, save_best_only=True)
 
-#testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
-#testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
-
-# Model
-if args.resume:
-    # Load checkpoint.
-    print('==> Resuming from checkpoint..')
-    assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    checkpoint = torch.load(os.path.join(os.path.dirname(__file__), '../checkpoint/{}'.format(checkpoint_name)))
-    net = checkpoint['net']
-    best_acc = checkpoint['acc']
-    start_epoch = checkpoint['epoch']
-    print('Loaded best acc: {}, Starting epoch: {}'.format(best_acc, start_epoch))
+if os.path.isfile(checkpoint_path):
+    model.load_weights(checkpoint_path)
+    print('Loaded weigths from checkpoint: {}'.format(checkpoint_path))
 else:
-    print('==> Building model..')
-    net = Model()
+    print('No checkpoint found.')
 
-if use_cuda:
-    net.cuda()
-    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
-    cudnn.benchmark = True
+"""###Define the loss and optimizer. Train the model."""
+adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
+model.compile(loss='mean_squared_error', optimizer=adam)
 
-criterion = nn.MSELoss()
-optimizer = optim.Adam(net.parameters(), lr=args.lr)
+if not args.visualize:
+    model.fit(trainX, trainY, epochs=25, batch_size=1, verbose=1, validation_data=(testX, testY), callbacks=[checkpointer])
 
-# Training
-def train(epoch):
-    print('\nEpoch: %d' % epoch)
-    net.train()
-    train_loss = 0
-    correct = 0
-    total = 0
-    for batch_idx, (inputs, targets) in enumerate(trainloader):
-        if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda()
-        optimizer.zero_grad()
-        inputs, targets = Variable(inputs), Variable(targets)
-        outputs = net(inputs)
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
+"""###Now check the predicted values for training and test data"""
 
-        train_loss += loss.data[0]
-        _, predicted = torch.max(outputs.data, 1)
-        total += targets.size(0)
-        correct += predicted.eq(targets.data).cpu().sum()
+# make predictions
+trainPredict = model.predict(trainX)
+testPredict = model.predict(testX)
 
-        progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
+# invert predictions
+trainPredict = scaler.inverse_transform(trainPredict)
+trainY = scaler.inverse_transform([trainY])
+testPredict = scaler.inverse_transform(testPredict)
+testY = scaler.inverse_transform([testY])
 
-def test(epoch):
-    global best_acc
-    net.eval()
-    test_loss = 0
-    correct = 0
-    total = 0
-    for batch_idx, (inputs, targets) in enumerate(testloader):
-        if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda()
-        inputs, targets = Variable(inputs, volatile=True), Variable(targets)
-        outputs = net(inputs)
-        loss = criterion(outputs, targets)
-
-        test_loss += loss.data[0]
-        _, predicted = torch.max(outputs.data, 1)
-        total += targets.size(0)
-        correct += predicted.eq(targets.data).cpu().sum()
-
-        progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
-
-    # Save checkpoint.
-    acc = 100.*correct/total
-    print('Total tested: {}, Correct tested: {}, accuracy: {}'.format(total, correct, acc))
-    print('Best acc: {}'.format(best_acc))
-    if acc > best_acc:
-        print('Saving..')
-        state = {
-            'net': net.module if use_cuda else net,
-            'acc': acc,
-            'epoch': epoch,
-        }
-        if not os.path.isdir('checkpoint'):
-            os.mkdir('checkpoint')
-        torch.save(state, './checkpoint/{}'.format(checkpoint_name))
-        best_acc = acc
+# calculate root mean squared error
+trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
+print('Train Score: %.2f RMSE' % (trainScore))
+testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
+print('Test Score: %.2f RMSE' % (testScore))
 
 
-for epoch in range(start_epoch, start_epoch+300):
-    adjust_learning_rate(optimizer, epoch, args.lr)
-    start = time.time()
-    train(epoch)
-    test(epoch)
-    end = time.time()
-    timeTaken = end - start
-    print('Epoch {} took {} seconds'.format(epoch, timeTaken))
+# shift train predictions for plotting
+trainPredictPlot = numpy.empty_like(dataset)
+trainPredictPlot[:, :] = numpy.nan
+# trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
+trainPredictPlot[:len(trainPredict), :] = trainPredict
+
+# shift test predictions for plotting
+testPredictPlot = numpy.empty_like(dataset)
+testPredictPlot[:, :] = numpy.nan
+# testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1, :] = testPredict
+testPredictPlot[len(trainPredict)+2:len(trainPredict)+len(testPredict)+2, :] = testPredict
+
+# plot baseline and predictions
+
+# plt.plot(scaler.inverse_transform(dataset))
+# plt.plot(trainPredictPlot)
+# plt.plot(testPredictPlot)
+# plt.show()
+
+data = go.Scatter(
+    x=pandas.DataFrame(scaler.inverse_transform(dataset)).index,
+    y=pandas.DataFrame(scaler.inverse_transform(dataset))[0],
+    name='Original Data'
+)
+
+train = go.Scatter(
+    x=pandas.DataFrame(trainPredictPlot).index,
+    y=pandas.DataFrame(trainPredictPlot)[0],
+    name='Train Predict Data'
+)
+
+test = go.Scatter(
+    x=pandas.DataFrame(testPredictPlot).index,
+    y=pandas.DataFrame(testPredictPlot)[0],
+    name='Test Predict Data'
+)
+
+data_plot = [data, train, test]
+fig = go.Figure(data=data_plot)
+py.plot(fig, filename=os.path.join(os.path.dirname(__file__), '../plots/lstm_results.html'))
