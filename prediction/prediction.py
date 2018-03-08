@@ -29,6 +29,9 @@ parser = argparse.ArgumentParser(description='Predict crypto prices')
 parser.add_argument('-v', '--visualize', action='store_const',
                    const=True, default=False,
                    help='Only visualize results of previously saved model')
+parser.add_argument('-r', '--resume', action='store_const',
+                   const=True, default=False,
+                   help='resume from previous checkpoint')
 
 args = parser.parse_args()
 
@@ -86,11 +89,12 @@ model.summary()
 checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}.hdf5'.format(checkpoint_name))
 checkpointer = ModelCheckpoint(filepath=checkpoint_path, verbose=1, save_best_only=True)
 
-if os.path.isfile(checkpoint_path):
-    model.load_weights(checkpoint_path)
-    print('Loaded weigths from checkpoint: {}'.format(checkpoint_path))
-else:
-    print('No checkpoint found.')
+if args.resume:
+    if os.path.isfile(checkpoint_path):
+        model.load_weights(checkpoint_path)
+        print('Loaded weigths from checkpoint: {}'.format(checkpoint_path))
+    else:
+        print('No checkpoint found.')
 
 """###Define the loss and optimizer. Train the model."""
 adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
