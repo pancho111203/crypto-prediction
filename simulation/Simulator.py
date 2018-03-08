@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
 from TickerFeed import TickerFeed
-from model import get_model, buyer
+from model import Predict_model
 import gdax
 
 class Simulator(object):
@@ -18,20 +18,24 @@ class Simulator(object):
         self.coinPair = '{}-USD'.format(self.cryptoCoin)
         self.buyPercentage = buyPercentage
         self.tickerFeed = TickerFeed(self.coinPair, 60)
-        self.tickerFeed.onTickerCallbacks(self.process)
+        self.tickerFeed.onTickerReceived(self.process)
+        self.predictor = Predict_model("model1")
         
     def run(self):
         self.tickerFeed.run()
         
     def process(self, data):
         currPrice = data['price']
-        predictedPrice = get_model(currPrice, 'model1')
-        decision = buyer(currPrice, predictedPrice)
+        print("Current Price", currPrice)
+        predictedPrice = self.predictor.get_model(currPrice)
+        print("Predict Price", predictedPrice)
+        decision = self.predictor.buyer(currPrice, predictedPrice)
         
         # TODO instead of taking price, take best bid for buys and best ask for sells
-        price = self.public_client.get_product_ticker(product_id=self.coinPair)['price']
+        price = float(self.public_client.get_product_ticker(product_id=self.coinPair)['price'])
         if decision == 'buy':
             self.buy(self.usd * self.buyPercentage, price)
+            
         elif decision == 'sell':
             self.sell(self.crypto * self.sellPercentage, price)
             
@@ -54,5 +58,6 @@ class Simulator(object):
         self.crypto -= cryptoAmount
         
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     test = Simulator()
     test.run()
