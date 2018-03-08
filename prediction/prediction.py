@@ -20,10 +20,15 @@ from keras.layers import Dense
 from keras.layers import LSTM
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
+from sklearn.externals import joblib
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-checkpoint_name = 'statefull'
+checkpoint_name = 'model1'
+
+if not os.path.isdir(os.path.join(os.path.dirname(__file__), 'checkpoint/{}'.format(checkpoint_name))):
+    dire = os.path.join(os.path.dirname(__file__), 'checkpoint/')
+    os.system("cd {}; mkdir {}".format(dire, checkpoint_name))
 
 parser = argparse.ArgumentParser(description='Predict crypto prices')
 parser.add_argument('-v', '--visualize', action='store_const',
@@ -43,7 +48,10 @@ dataset = data_loader.getCandles('ETH-USD', 60, '2018-01-25T00:00:25+01:00', '20
 
 # normalize the dataset
 scaler = MinMaxScaler(feature_range=(0, 1))
-dataset = scaler.fit_transform(dataset)
+scaler.fit(dataset)
+dataset = scaler.transform(dataset)
+scaler_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/scaler.pkl'.format(checkpoint_name))
+joblib.dump(scaler, scaler_path)
 
 """###Split data into training and test. Training is the past, test is the future."""
 
@@ -70,38 +78,47 @@ look_back = 1
 trainX, trainY = create_dataset(train, look_back)
 testX, testY = create_dataset(test, look_back)
 
+
 """###Reshape data to fit the LSTM expected format (samples, time_steps, features)"""
 # reshape input to be [samples, time steps, features]
 trainX = numpy.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
 testX = numpy.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
+print(trainX.shape)
+print(testX.shape)
 
 """###Build a very simple LSTM with 4 nodes connected to a 1 neuron output layer:"""
 
 # create and fit the LSTM network
 model = Sequential()
-# model.add(LSTM(4, input_shape=(1, look_back)))
-model.add(LSTM(4, batch_input_shape=(1, 1, look_back), stateful=True))
+model.add(LSTM(4, input_shape=(1, look_back)))
+# model.add(LSTM(4, batch_input_shape=(1, 1, look_back), stateful=True))
 model.add(Dense(1))
 
 model.summary()
 
+
 """### Checkpointing """
-checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}.hdf5'.format(checkpoint_name))
+checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/weights.hdf5'.format(checkpoint_name))
+model_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/model.hdf5'.format(checkpoint_name))
 checkpointer = ModelCheckpoint(filepath=checkpoint_path, verbose=1, save_best_only=True)
 
-if args.resume:
-    if os.path.isfile(checkpoint_path):
-        model.load_weights(checkpoint_path)
-        print('Loaded weigths from checkpoint: {}'.format(checkpoint_path))
-    else:
-        print('No checkpoint found.')
+if args.resume and os.path.isfile(checkpoint_path) and os.path.isfile(model_path):
+    model.load(model_path)
+    model.load_weights(checkpoint_path)
+    print('Loaded weigths from checkpoint: {}'.format(checkpoint_path))
+else:
+    print('No checkpoint found.')
+
 
 """###Define the loss and optimizer. Train the model."""
 adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
-model.compile(loss='mean_squared_error', optimizer=adam, metrics=['mse'])
+model.compile(loss='mean_squared_error', optimizer=adam, metrics=['MSE', 'MAE'])
 
 if not args.visualize:
-    model.fit(trainX, trainY, epochs=3, batch_size=1, verbose=1, validation_data=(testX, testY), callbacks=[checkpointer])
+    model.fit(trainX, trainY, epochs=20, batch_size=1, verbose=1, validation_data=(testX, testY), callbacks=[checkpointer])
+
+model_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/model.hdf5'.format(checkpoint_name))
+model.save(model_path)
 
 """###Now check the predicted values for training and test data"""
 
@@ -134,13 +151,9 @@ testPredictPlot[:, :] = numpy.nan
 # testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1, :] = testPredict
 testPredictPlot[len(trainPredict)+2:len(trainPredict)+len(testPredict)+2, :] = testPredict
 
-# plot baseline and predictions
 
-# plt.plot(scaler.inverse_transform(dataset))
-# plt.plot(trainPredictPlot)
-# plt.plot(testPredictPlot)
-# plt.show()
 
+"""Training Graphs"""
 data = go.Scatter(
     x=pandas.DataFrame(scaler.inverse_transform(dataset)).index,
     y=pandas.DataFrame(scaler.inverse_transform(dataset))[0],
