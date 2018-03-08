@@ -48,7 +48,7 @@ class Simulator(object):
             self.sell(self.crypto * self.buyPercentage, price)
             
         logger.info('Current Holdings:\nUSD: {}\n{}: {}'.format(self.usd, self.cryptoCoin, self.crypto))
-        logger.into('Total USD Value: {}'.format((price * self.crypto) + self.usd))
+        logger.info('Total USD Value: {}'.format((price * self.crypto) + self.usd))
         
     def buy(self, amountInUsd, price):
         # TODO take into account exchange fees
