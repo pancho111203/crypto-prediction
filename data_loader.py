@@ -52,7 +52,7 @@ def getCandles(coinPair, granularity, start, end, save=True):
             logger.error('Starting date ({}) is after ending date ({})'.format(start, end))
             return []
     
-        maxResultsPerCall = 350 # described in https://docs.gdax.com/#get-historic-rates
+        maxResultsPerCall = 200 # described in https://docs.gdax.com/#get-historic-rates
         secondsCoveredPerCall = maxResultsPerCall * granularity
         
         expectedResultsLength = int((endTime - startTime).total_seconds() / granularity) + 1

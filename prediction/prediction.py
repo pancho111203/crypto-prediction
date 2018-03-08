@@ -12,6 +12,7 @@ import keras
 import plotly.offline as py
 import plotly.graph_objs as go
 from keras.optimizers import Adam
+import logging
 
 from keras.callbacks import ModelCheckpoint
 from keras.models import Sequential
@@ -19,9 +20,10 @@ from keras.layers import Dense
 from keras.layers import LSTM
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
-checkpoint_name = 'starter'
-
+checkpoint_name = 'stateless'
 
 parser = argparse.ArgumentParser(description='Predict crypto prices')
 parser.add_argument('-v', '--visualize', action='store_const',
@@ -32,19 +34,13 @@ args = parser.parse_args()
 
 
 """Get Data"""
-dataset = data_loader.getCandles('ETH-USD', 60, '2018-02-27T00:00:25+01:00', '2018-02-28T23:58:25+01:00')[['open']]
-# print(dataset)
-# plt.plot(dataset)
-# plt.show()
+dataset = data_loader.getCandles('ETH-USD', 60, '2018-01-25T00:00:25+01:00', '2018-02-25T00:00:25+01:00')[['open']]
 
 """###Normalize data"""
 
 # normalize the dataset
 scaler = MinMaxScaler(feature_range=(0, 1))
 dataset = scaler.fit_transform(dataset)
-
-# plt.plot(dataset)
-# plt.show()
 
 """###Split data into training and test. Training is the past, test is the future."""
 
@@ -72,7 +68,6 @@ trainX, trainY = create_dataset(train, look_back)
 testX, testY = create_dataset(test, look_back)
 
 """###Reshape data to fit the LSTM expected format (samples, time_steps, features)"""
-
 # reshape input to be [samples, time steps, features]
 trainX = numpy.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
 testX = numpy.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
@@ -82,10 +77,11 @@ testX = numpy.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
 # create and fit the LSTM network
 model = Sequential()
 model.add(LSTM(4, input_shape=(1, look_back)))
+#model.add(LSTM(4, batch_input_shape=(1, 1, look_back), stateful=True))
 model.add(Dense(1))
 
 """### Checkpointing """
-checkpoint_path = os.path.join(os.path.dirname(__file__), '../checkpoint/{}.hdf5'.format(checkpoint_name))
+checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}.hdf5'.format(checkpoint_name))
 checkpointer = ModelCheckpoint(filepath=checkpoint_path, verbose=1, save_best_only=True)
 
 if os.path.isfile(checkpoint_path):
@@ -104,8 +100,8 @@ if not args.visualize:
 """###Now check the predicted values for training and test data"""
 
 # make predictions
-trainPredict = model.predict(trainX)
-testPredict = model.predict(testX)
+trainPredict = model.predict(trainX, batch_size=1)
+testPredict = model.predict(testX, batch_size=1)
 
 # invert predictions
 trainPredict = scaler.inverse_transform(trainPredict)
@@ -159,4 +155,4 @@ test = go.Scatter(
 
 data_plot = [data, train, test]
 fig = go.Figure(data=data_plot)
-py.plot(fig, filename=os.path.join(os.path.dirname(__file__), '../plots/lstm_results.html'))
+py.plot(fig, filename=os.path.join(os.path.dirname(__file__), '../plots/{}.html'.format(checkpoint_name)))
