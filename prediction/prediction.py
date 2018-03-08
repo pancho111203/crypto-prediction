@@ -23,7 +23,7 @@ from sklearn.metrics import mean_squared_error
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-checkpoint_name = 'stateless'
+checkpoint_name = 'statefull'
 
 parser = argparse.ArgumentParser(description='Predict crypto prices')
 parser.add_argument('-v', '--visualize', action='store_const',
@@ -76,9 +76,11 @@ testX = numpy.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
 
 # create and fit the LSTM network
 model = Sequential()
-model.add(LSTM(4, input_shape=(1, look_back)))
-#model.add(LSTM(4, batch_input_shape=(1, 1, look_back), stateful=True))
+# model.add(LSTM(4, input_shape=(1, look_back)))
+model.add(LSTM(4, batch_input_shape=(1, 1, look_back), stateful=True))
 model.add(Dense(1))
+
+model.summary()
 
 """### Checkpointing """
 checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}.hdf5'.format(checkpoint_name))
@@ -92,10 +94,10 @@ else:
 
 """###Define the loss and optimizer. Train the model."""
 adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
-model.compile(loss='mean_squared_error', optimizer=adam)
+model.compile(loss='mean_squared_error', optimizer=adam, metrics=['mse'])
 
 if not args.visualize:
-    model.fit(trainX, trainY, epochs=25, batch_size=1, verbose=1, validation_data=(testX, testY), callbacks=[checkpointer])
+    model.fit(trainX, trainY, epochs=3, batch_size=1, verbose=1, validation_data=(testX, testY), callbacks=[checkpointer])
 
 """###Now check the predicted values for training and test data"""
 
