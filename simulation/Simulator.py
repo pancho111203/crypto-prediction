@@ -19,13 +19,18 @@ class Simulator(object):
         self.buyPercentage = buyPercentage
         self.tickerFeed = TickerFeed(self.coinPair, 60)
         self.tickerFeed.onTickerCallbacks(self.process)
-        
+        self.predictedPrice = None
+
     def run(self):
         self.tickerFeed.run()
         
     def process(self, data):
         currPrice = data['price']
-        predictedPrice = get_model(currPrice, 'model1')
+        
+        if self.predictedPrice:
+            logger.info('Previous prediction error: {}'.format(currPrice - self.predictedPrice))
+
+        self.predictedPrice = get_model(currPrice, 'model1')
         decision = buyer(currPrice, predictedPrice)
         
         # TODO instead of taking price, take best bid for buys and best ask for sells
@@ -36,6 +41,7 @@ class Simulator(object):
             self.sell(self.crypto * self.sellPercentage, price)
             
         logger.info('Current Holdings:\nUSD: {}\n{}: {}'.format(self.usd, self.cryptoCoin, self.crypto))
+        logger.into('Total USD Value: {}'.format((price * self.crypto) + self.usd))
         
     def buy(self, amountInUsd, price):
         # TODO take into account exchange fees
