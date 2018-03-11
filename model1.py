@@ -35,7 +35,7 @@ class Predict_model(object):
         return xt[0,0]
 
     def buyer(self, xt):
-        delta = 0.00001
+        delta = 0.0001
         if xt > 1 + delta:
             return 'buy'
         elif xt < 1 - delta:

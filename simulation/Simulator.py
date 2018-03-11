@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
 from TickerFeed import TickerFeed
-from model1 import Predict_model
+from model import Predict_model
 import gdax
 
 class Simulator(object):
@@ -20,41 +20,39 @@ class Simulator(object):
         self.tickerFeed = TickerFeed(self.coinPair, 60)
 
         self.tickerFeed.onTickerReceived(self.process)
-        self.predictor = Predict_model("model2")
+        self.predictor = Predict_model("model1")
+        self.predictedPrice = None
         self.pastCurrentPrice = None
-        self.predictedDelta = None
-        self.predictPrice = None
-
+        
     def run(self):
         self.tickerFeed.run()
         
     def process(self, data):
         currPrice = data['price']
 
-        if self.pastCurrentPrice:
-            if self.predictPrice:
-                logger.info('Previous prediction error: {}'.format(currPrice - self.predictPrice))
+        if self.predictedPrice:
+            logger.info('Previous prediction error: {}'.format(currPrice - self.predictedPrice))
+            self.predictor.training(self.pastCurrentPrice, currPrice)
 
-            self.predictedDelta = self.predictor.get_model(self.pastCurrentPrice, currPrice)
-            
-            logger.info('Current Price: {}'.format(currPrice))
-            self.predictPrice = self.predictedDelta*currPrice
-            logger.info('Predicted Price: {}'.format(self.predictPrice))
+        self.predictedPrice = self.predictor.get_model(currPrice)
+        self.pastCurrentPrice = currPrice
+        
+        logger.info('Current Price: {}'.format(currPrice))
+        logger.info('Predicted Price: {}'.format(self.predictedPrice))
 
-            decision = self.predictor.buyer(self.predictedDelta)
+        decision = self.predictor.buyer(currPrice, self.predictedPrice)
+        
+        # TODO instead of taking price, take best bid for buys and best ask for sells
+        price = float(self.public_client.get_product_ticker(product_id=self.coinPair)['price'])
+        if decision == 'buy':
+            self.buy(self.usd * self.buyPercentage, price)
             
-            # TODO instead of taking price, take best bid for buys and best ask for sells
-            price = float(self.public_client.get_product_ticker(product_id=self.coinPair)['price'])
-            if decision == 'buy':
-                self.buy(self.usd * self.buyPercentage, price)
-                
-            elif decision == 'sell':
-                self.sell(self.crypto * self.buyPercentage, price)
-                
-            logger.info('Current Holdings:\nUSD: {}\n{}: {}'.format(self.usd, self.cryptoCoin, self.crypto))
-            logger.info('Total USD Value: {}'.format((price * self.crypto) + self.usd))
-       
-        self.pastCurrentPrice =  currPrice
+        elif decision == 'sell':
+            self.sell(self.crypto * self.buyPercentage, price)
+            
+        logger.info('Current Holdings:\nUSD: {}\n{}: {}'.format(self.usd, self.cryptoCoin, self.crypto))
+        logger.info('Total USD Value: {}'.format((price * self.crypto) + self.usd))
+        
     def buy(self, amountInUsd, price):
         # TODO take into account exchange fees
         amountInCrypto = amountInUsd / price
