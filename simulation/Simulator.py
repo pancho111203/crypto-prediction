@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
 from TickerFeed import TickerFeed
-from model import Predict_model
+from model1 import Predict_model
 import gdax
 
 class Simulator(object):
@@ -20,8 +20,9 @@ class Simulator(object):
         self.tickerFeed = TickerFeed(self.coinPair, 60)
 
         self.tickerFeed.onTickerReceived(self.process)
-        self.predictor = Predict_model("model1")
+        self.predictor = Predict_model("model2")
         self.predictedPrice = None
+        self.pastCurrentPrice = None
         
     def run(self):
         self.tickerFeed.run()
@@ -31,9 +32,11 @@ class Simulator(object):
 
         if self.predictedPrice:
             logger.info('Previous prediction error: {}'.format(currPrice - self.predictedPrice))
+            self.predictor.training(self.pastCurrentPrice, currPrice)
 
         self.predictedPrice = self.predictor.get_model(currPrice)
-
+        self.pastCurrentPrice = currPrice
+        
         logger.info('Current Price: {}'.format(currPrice))
         logger.info('Predicted Price: {}'.format(self.predictedPrice))
 

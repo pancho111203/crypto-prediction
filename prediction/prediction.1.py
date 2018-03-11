@@ -24,7 +24,7 @@ from sklearn.externals import joblib
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-checkpoint_name = 'model1'
+checkpoint_name = 'model2'
 
 if not os.path.isdir(os.path.join(os.path.dirname(__file__), 'checkpoint/{}'.format(checkpoint_name))):
     dire = os.path.join(os.path.dirname(__file__), 'checkpoint/')
@@ -47,19 +47,17 @@ dataset = data_loader.getCandles('ETH-USD', 60, '2018-03-07T00:00:25+01:00', '20
 """###Normalize data"""
 
 # normalize the dataset
-scaler = MinMaxScaler(feature_range=(0, 1))
-scaler.fit(dataset)
-dataset = scaler.transform(dataset)
-scaler_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/scaler.pkl'.format(checkpoint_name))
-joblib.dump(scaler, scaler_path)
+dataset1 = dataset.values[:-1]
+dataset2 = dataset.values[1:]
 
+dataset = dataset1/dataset2
 """###Split data into training and test. Training is the past, test is the future."""
 
 # split into train and test sets
 train_size = int(len(dataset) * 0.7)
 test_size = len(dataset) - train_size
 train, test = dataset[0:train_size,:], dataset[train_size:len(dataset),:]
-print(len(train), len(test))
+# print(len(train), len(test))
 
 """###Convert data into pairs: (features, targets)"""
 
@@ -78,12 +76,15 @@ look_back = 1
 trainX, trainY = create_dataset(train, look_back)
 testX, testY = create_dataset(test, look_back)
 
+print("Train y")
+print(trainY.shape)
 print(testY.shape)
-print(testY)
+# print(testY)
 """###Reshape data to fit the LSTM expected format (samples, time_steps, features)"""
 # reshape input to be [samples, time steps, features]
 trainX = numpy.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
 testX = numpy.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
+print("Train X")
 print(trainX.shape)
 print(testX.shape)
 
@@ -116,7 +117,7 @@ adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgra
 model.compile(loss='mean_squared_error', optimizer=adam, metrics=['MSE', 'MAE'])
 
 if not args.visualize:
-    model.fit(trainX, trainY, epochs=20, batch_size=1, verbose=1, validation_data=(testX, testY), callbacks=[checkpointer])
+    model.fit(trainX, trainY, epochs=25, batch_size=1, verbose=1, validation_data=(testX, testY), callbacks=[checkpointer])
 
 model_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/model.hdf5'.format(checkpoint_name))
 model.save(model_path)
@@ -126,18 +127,14 @@ model.save(model_path)
 # make predictions
 trainPredict = model.predict(trainX, batch_size=1)
 testPredict = model.predict(testX, batch_size=1)
-
-# invert predictions
-trainPredict = scaler.inverse_transform(trainPredict)
-trainY = scaler.inverse_transform([trainY])
-testPredict = scaler.inverse_transform(testPredict)
-testY = scaler.inverse_transform([testY])
+print(trainPredict.shape)
+print(testPredict.shape)
 
 # calculate root mean squared error
-trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
-print('Train Score: %.2f RMSE' % (trainScore))
-testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:,0]))
-print('Test Score: %.2f RMSE' % (testScore))
+trainScore = math.sqrt(mean_squared_error(trainY, trainPredict[:,0]))
+print('Train Score: {} % RMSE'.format(trainScore*100))
+testScore = math.sqrt(mean_squared_error(testY, testPredict[:,0]))
+print('Test Score: {} % RMSE'.format(testScore*100))
 
 
 # shift train predictions for plotting
@@ -156,8 +153,8 @@ testPredictPlot[len(trainPredict)+2:len(trainPredict)+len(testPredict)+2, :] = t
 
 """Training Graphs"""
 data = go.Scatter(
-    x=pandas.DataFrame(scaler.inverse_transform(dataset)).index,
-    y=pandas.DataFrame(scaler.inverse_transform(dataset))[0],
+    x=pandas.DataFrame(dataset).index,
+    y=pandas.DataFrame(dataset)[0],
     name='Original Data'
 )
 
