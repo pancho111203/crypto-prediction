@@ -23,11 +23,13 @@ class Simulator(object):
         self.tickerFeed = TickerFeed(self.coinPair, 60)
 
         self.tickerFeed.onTickerReceived(self.process)
-        self.predictor = Predict_model("model2")
+        self.predictor = Predict_model("model2.256lstmx2")
         self.pastCurrentPrice = None
         self.pastPastCurrentPrice = None
         self.predictedDelta = None
         self.predictPrice = None
+
+        self.valueHistory = []
 
     def run(self):
         self.tickerFeed.run()
@@ -66,7 +68,8 @@ class Simulator(object):
 
             logger.info('Total USD Value: {}'.format((price * self.crypto) + self.usd))
 
-            logger.info('Change: {}%'.format((currentValue / initialValue) * 100))
+            logger.info('Change: {}usd, {}%'.format(currentValue - initialValue, (currentValue / initialValue) * 100))
+            self.valueHistory.append(currentValue)
 
         self.pastPastCurrentPrice = self.pastCurrentPrice
         self.pastCurrentPrice =  currPrice

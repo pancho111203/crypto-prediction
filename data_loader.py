@@ -73,8 +73,8 @@ def getCandles(coinPair, granularity, start, end, save=True):
         allCandles += requestCandlesAndSave(currentStartTime, endTime)
         
         if save:
-            if not(os.path.isdir("data")):
-                os.system("mkdir data; cd data; mkdir candles")
+            if not(os.path.exists(os.path.join(os.path.dirname(__file__), 'data/candles'))):
+                os.makedirs(os.path.join(os.path.dirname(__file__), 'data/candles'))
     
             logger.info('Saving data on file: {}'.format(filename))
             with open(filename, 'a+') as f:
