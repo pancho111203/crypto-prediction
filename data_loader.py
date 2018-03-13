@@ -18,9 +18,9 @@ public_client = gdax.PublicClient()
 #The granularity field must be one of the following values: {60, 300, 900, 3600, 21600, 86400}. 
 #Otherwise, your request will be rejected. 
 #These values correspond to timeslices representing one minute, five minutes, fifteen minutes, one hour, six hours, and one day, respectively.
-def getCandles(coinPair, granularity, start, end, save=True):
+def getCandles(coinPair, granularity, start=None, end=None, save=True):
     filename = os.path.join(os.path.dirname(__file__), 'data/candles/{}_{}_{}_{}.json'.format(coinPair, granularity, start, end))
-    if os.path.isfile(filename):
+    if end and start and os.path.isfile(filename):
         logger.info('Loading data from file: {}'.format(filename))
         with open(filename, 'r') as f:
             allCandles = json.load(f)
@@ -45,40 +45,44 @@ def getCandles(coinPair, granularity, start, end, save=True):
             logger.error('Invalid granularity({}), must be one of the following values: {60, 300, 900, 3600, 21600, 86400}'.format(granularity))
             return []
         
-        startTime = dateparse(start)
-        endTime = dateparse(end)
-        
-        if endTime < startTime:
-            logger.error('Starting date ({}) is after ending date ({})'.format(start, end))
-            return []
-    
-        maxResultsPerCall = 200 # described in https://docs.gdax.com/#get-historic-rates
-        secondsCoveredPerCall = maxResultsPerCall * granularity
-        
-        expectedResultsLength = int((endTime - startTime).total_seconds() / granularity) + 1
-        numberOfRequests = math.ceil(expectedResultsLength / maxResultsPerCall)
-        logger.debug('expectedResultsLength: {}'.format(expectedResultsLength))
-        logger.debug('numberOfRequests: {}'.format(numberOfRequests))
-        
-        allCandles = []
-        currentStartTime = startTime
-        for i in range(0, numberOfRequests - 1):
-            currentEndTime = currentStartTime + datetime.timedelta(seconds=secondsCoveredPerCall)
-    
-            allCandles += requestCandlesAndSave(currentStartTime, currentEndTime)
-                
-            currentStartTime = currentEndTime + datetime.timedelta(seconds=granularity)
+        if not start or not end:
+            allCandles = public_client.get_product_historic_rates(coinPair, granularity=60)
+            allCandles.reverse()
+        else:
+            startTime = dateparse(start)
+            endTime = dateparse(end)
             
-        # last request only takes until endTime
-        allCandles += requestCandlesAndSave(currentStartTime, endTime)
+            if endTime < startTime:
+                logger.error('Starting date ({}) is after ending date ({})'.format(start, end))
+                return []
         
-        if save:
-            if not(os.path.exists(os.path.join(os.path.dirname(__file__), 'data/candles'))):
-                os.makedirs(os.path.join(os.path.dirname(__file__), 'data/candles'))
-    
-            logger.info('Saving data on file: {}'.format(filename))
-            with open(filename, 'a+') as f:
-                json.dump(allCandles, f)
+            maxResultsPerCall = 200 # described in https://docs.gdax.com/#get-historic-rates
+            secondsCoveredPerCall = maxResultsPerCall * granularity
+            
+            expectedResultsLength = int((endTime - startTime).total_seconds() / granularity) + 1
+            numberOfRequests = math.ceil(expectedResultsLength / maxResultsPerCall)
+            logger.debug('expectedResultsLength: {}'.format(expectedResultsLength))
+            logger.debug('numberOfRequests: {}'.format(numberOfRequests))
+            
+            allCandles = []
+            currentStartTime = startTime
+            for i in range(0, numberOfRequests - 1):
+                currentEndTime = currentStartTime + datetime.timedelta(seconds=secondsCoveredPerCall)
+        
+                allCandles += requestCandlesAndSave(currentStartTime, currentEndTime)
+                    
+                currentStartTime = currentEndTime + datetime.timedelta(seconds=granularity)
+                
+            # last request only takes until endTime
+            allCandles += requestCandlesAndSave(currentStartTime, endTime)
+            
+            if save:
+                if not(os.path.exists(os.path.join(os.path.dirname(__file__), 'data/candles'))):
+                    os.makedirs(os.path.join(os.path.dirname(__file__), 'data/candles'))
+        
+                logger.info('Saving data on file: {}'.format(filename))
+                with open(filename, 'a+') as f:
+                    json.dump(allCandles, f)
 
     candlesFrame = pd.DataFrame(allCandles)
     candlesFrame.index = pd.to_datetime(candlesFrame[0], unit='s')

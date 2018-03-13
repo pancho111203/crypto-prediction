@@ -45,7 +45,7 @@ class Predict_model(object):
     
     def training(self, xt, x, xr):
         x = np.array(xt/x)
-        trainX = np.reshape(x, (1, 1, 1))
+        trainX = np.reshape(x, (x.shape[0], 1, 1))
  
         trainY = np.array([xt/xr])
 

@@ -25,7 +25,7 @@ from sklearn.externals import joblib
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-checkpoint_name = 'model2.256lstmx2'
+checkpoint_name = 'model2.256lstmx2.stateful'
 
 if not os.path.isdir(os.path.join(os.path.dirname(__file__), 'checkpoint/{}'.format(checkpoint_name))):
     dire = os.path.join(os.path.dirname(__file__), 'checkpoint/')
@@ -93,9 +93,9 @@ print(testX.shape)
 
 # create and fit the LSTM network
 model = Sequential()
-model.add(LSTM(256, input_shape=(1, look_back), return_sequences=True))
-model.add(LSTM(256))
-# model.add(LSTM(4, batch_input_shape=(1, 1, look_back), stateful=True))
+#model.add(LSTM(256, input_shape=(1, look_back), return_sequences=True))
+model.add(LSTM(256, batch_input_shape=(1, 1, look_back), stateful=True, return_sequences=True))
+model.add(LSTM(256, stateful=True))
 model.add(Dense(1))
 
 model.summary()

@@ -6,6 +6,7 @@ logger = logging.getLogger(__name__)
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 
 from TickerFeed import TickerFeed
+import data_loader
 from model1 import Predict_model
 import gdax
 
@@ -23,13 +24,22 @@ class Simulator(object):
         self.tickerFeed = TickerFeed(self.coinPair, 60)
 
         self.tickerFeed.onTickerReceived(self.process)
-        self.predictor = Predict_model("model2.256lstmx2")
+        self.predictor = Predict_model("model2.256lstmx2.stateful")
         self.pastCurrentPrice = None
         self.pastPastCurrentPrice = None
         self.predictedDelta = None
         self.predictPrice = None
 
         self.valueHistory = []
+
+        startingData = data_loader.getCandles('ETH-USD', 60)[['open']]
+
+        for currentPrice in startingData.values:
+            if self.pastCurrentPrice and self.pastPastCurrentPrice:
+                self.predictor.training(self.pastPastCurrentPrice, self.pastCurrentPrice, currentPrice)
+
+            self.pastPastCurrentPrice = self.pastCurrentPrice
+            self.pastCurrentPrice = currentPrice
 
     def run(self):
         self.tickerFeed.run()
@@ -42,7 +52,8 @@ class Simulator(object):
                 err = currPrice - self.predictPrice
                 logger.info('Previous prediction error: {}'.format(err))
 
-            if self.pastPastCurrentPrice and abs(err)>0.09:
+#            if self.pastPastCurrentPrice and abs(err)>0.09:
+            if self.pastPastCurrentPrice:
                 self.predictor.training(self.pastPastCurrentPrice, self.pastCurrentPrice, currPrice)
 
             self.predictedDelta = self.predictor.get_model(self.pastCurrentPrice, currPrice)
