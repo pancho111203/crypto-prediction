@@ -24,7 +24,7 @@ from sklearn.externals import joblib
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-checkpoint_name = 'model2'
+checkpoint_name = 'model2.256lstmx2'
 
 if not os.path.isdir(os.path.join(os.path.dirname(__file__), 'checkpoint/{}'.format(checkpoint_name))):
     dire = os.path.join(os.path.dirname(__file__), 'checkpoint/')
@@ -42,7 +42,7 @@ args = parser.parse_args()
 
 
 """Get Data"""
-dataset = data_loader.getCandles('ETH-USD', 60, '2018-03-07T00:00:25+01:00', '2018-03-08T00:00:25+01:00')[['open']]
+dataset = data_loader.getCandles('ETH-USD', 60, '2018-02-08T00:00:25+01:00', '2018-03-08T00:00:25+01:00')[['open']]
 
 """###Normalize data"""
 
@@ -92,7 +92,8 @@ print(testX.shape)
 
 # create and fit the LSTM network
 model = Sequential()
-model.add(LSTM(4, input_shape=(1, look_back)))
+model.add(LSTM(256, input_shape=(1, look_back), return_sequences=True))
+model.add(LSTM(256))
 # model.add(LSTM(4, batch_input_shape=(1, 1, look_back), stateful=True))
 model.add(Dense(1))
 

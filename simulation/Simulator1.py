@@ -10,9 +10,12 @@ from model1 import Predict_model
 import gdax
 
 class Simulator(object):
-    def __init__(self, cryptoCoin='ETH', buyPercentage=0.5):
-        self.usd = 1000.0
-        self.crypto = 1.0
+    def __init__(self, cryptoCoin='ETH', buyPercentage=0.5, initialUsd = 1000.0, initialCrypto = 1.0):
+        self.initialCrypto = initialCrypto
+        self.initialUsd = initialUsd
+
+        self.usd = initialUsd
+        self.crypto = initialCrypto
         self.public_client = gdax.PublicClient()
         self.cryptoCoin = cryptoCoin
         self.coinPair = '{}-USD'.format(self.cryptoCoin)
@@ -57,11 +60,18 @@ class Simulator(object):
                 self.sell(self.crypto * self.buyPercentage, price)
                 
             logger.info('Current Holdings:\nUSD: {}\n{}: {}'.format(self.usd, self.cryptoCoin, self.crypto))
+
+            currentValue = (price * self.crypto) + self.usd
+            initialValue = (price * self.initialCrypto) + self.initialUsd
+
             logger.info('Total USD Value: {}'.format((price * self.crypto) + self.usd))
-       
+
+            logger.info('Change: {}%'.format((currentValue / initialValue) * 100))
+
         self.pastPastCurrentPrice = self.pastCurrentPrice
         self.pastCurrentPrice =  currPrice
-        print("")
+        logger.info("")
+        
     def buy(self, amountInUsd, price):
         # TODO take into account exchange fees
         amountInCrypto = amountInUsd / price
