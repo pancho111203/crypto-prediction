@@ -4,17 +4,21 @@ import os
 import sys
 logger = logging.getLogger(__name__)
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-
+___file___ = __file__
+import json
 from TickerFeed import TickerFeed
 import data_loader
 from model1 import Predict_model
 import gdax
+import datetime
+modelName = "model2.256lstmx2.stateful"
 
 class Simulator(object):
     def __init__(self, cryptoCoin='ETH', buyPercentage=0.5, initialUsd = 1000.0, initialCrypto = 1.0):
         self.initialCrypto = initialCrypto
         self.initialUsd = initialUsd
 
+        self.startTime = datetime.datetime.now().isoformat()
         self.usd = initialUsd
         self.crypto = initialCrypto
         self.public_client = gdax.PublicClient()
@@ -24,7 +28,7 @@ class Simulator(object):
         self.tickerFeed = TickerFeed(self.coinPair, 60)
 
         self.tickerFeed.onTickerReceived(self.process)
-        self.predictor = Predict_model("model2.256lstmx2.stateful")
+        self.predictor = Predict_model(modelName)
         self.pastCurrentPrice = None
         self.pastPastCurrentPrice = None
         self.predictedDelta = None
@@ -35,8 +39,8 @@ class Simulator(object):
         startingData = data_loader.getCandles('ETH-USD', 60)[['open']]
 
         for currentPrice in startingData.values:
-            if self.pastCurrentPrice and self.pastPastCurrentPrice:
-                self.predictor.training(self.pastPastCurrentPrice, self.pastCurrentPrice, currentPrice)
+            if self.pastCurrentPrice:
+                self.predictor.get_model(self.pastCurrentPrice, currentPrice)
 
             self.pastPastCurrentPrice = self.pastCurrentPrice
             self.pastCurrentPrice = currentPrice
@@ -46,7 +50,7 @@ class Simulator(object):
         
     def process(self, data):
         currPrice = data['price']
-
+        time = data['time']
         if self.pastCurrentPrice:
             if self.predictPrice:
                 err = currPrice - self.predictPrice
@@ -80,7 +84,10 @@ class Simulator(object):
             logger.info('Total USD Value: {}'.format((price * self.crypto) + self.usd))
 
             logger.info('Change: {}usd, {}%'.format(currentValue - initialValue, (currentValue / initialValue) * 100))
-            self.valueHistory.append(currentValue)
+            self.valueHistory.append([time, currentValue])
+            if len(self.valueHistory) > 0 and len(self.valueHistory) % 30 == 0:
+                with open(os.path.join(os.path.dirname(___file___), "../prediction/checkpoint/{}/stats_{}.json".format(modelName, self.startTime)), 'w') as f:
+                    json.dump(self.valueHistory, f)
 
         self.pastPastCurrentPrice = self.pastCurrentPrice
         self.pastCurrentPrice =  currPrice

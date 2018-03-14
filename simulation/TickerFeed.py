@@ -29,7 +29,8 @@ class TickerFeed(object):
     def tick(self):
         ticker = self.public_client.get_product_ticker(product_id='ETH-USD')
         out = {
-            'price': float(ticker['price'])
+            'price': float(ticker['price']),
+            'time': ticker['time']
         }
         
         for cb in self.onTickerCallbacks:
