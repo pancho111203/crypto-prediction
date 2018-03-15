@@ -13,21 +13,21 @@ import gdax
 import datetime
 modelName = "model2.256lstmx2.stateful"
 
+public_client = gdax.PublicClient()
+
 class Simulator(object):
-    def __init__(self, cryptoCoin='ETH', buyPercentage=0.5, initialUsd = 1000.0, initialCrypto = 1.0):
+    def __init__(self, cryptoCoin='ETH', buyPercentage=0.5, initialUsd = 1000.0, initialCrypto = 1.0, isRealTime=True):
         self.initialCrypto = initialCrypto
         self.initialUsd = initialUsd
-
+        self.isRealTime = isRealTime
+        
         self.startTime = datetime.datetime.now().isoformat()
         self.usd = initialUsd
         self.crypto = initialCrypto
-        self.public_client = gdax.PublicClient()
         self.cryptoCoin = cryptoCoin
         self.coinPair = '{}-USD'.format(self.cryptoCoin)
         self.buyPercentage = buyPercentage
-        self.tickerFeed = TickerFeed(self.coinPair, 60)
 
-        self.tickerFeed.onTickerReceived(self.process)
         self.predictor = Predict_model(modelName)
         self.pastCurrentPrice = None
         self.pastPastCurrentPrice = None
@@ -36,7 +36,7 @@ class Simulator(object):
 
         self.valueHistory = []
 
-        startingData = data_loader.getCandles('ETH-USD', 60)[['open']]
+        startingData = data_loader.getCandles('ETH-USD', 60, save=False)[['open']]
 
         for currentPrice in startingData.values:
             if self.pastCurrentPrice:
@@ -45,9 +45,6 @@ class Simulator(object):
             self.pastPastCurrentPrice = self.pastCurrentPrice
             self.pastCurrentPrice = currentPrice
 
-    def run(self):
-        self.tickerFeed.run()
-        
     def process(self, data):
         currPrice = data['price']
         time = data['time']
@@ -69,7 +66,11 @@ class Simulator(object):
             decision = self.predictor.buyer(self.predictedDelta)
             
             # TODO instead of taking price, take best bid for buys and best ask for sells
-            price = float(self.public_client.get_product_ticker(product_id=self.coinPair)['price'])
+            if self.isRealTime:
+                price = float(public_client.get_product_ticker(product_id=self.coinPair)['price'])
+            else:
+                price = currPrice
+                
             if decision == 'buy':
                 self.buy(self.usd * self.buyPercentage, price)
                 
@@ -110,6 +111,21 @@ class Simulator(object):
         self.crypto -= amountInCrypto
         
 if __name__ == '__main__':
+
+
     logging.basicConfig(level=logging.INFO)
-    test = Simulator()
-    test.run()
+
+    # sim = Simulator()
+    # tickerFeed = TickerFeed(sim.coinPair, 60)
+    # tickerFeed.onTickerReceived(sim.process)
+    # tickerFeed.run()
+
+    sim = Simulator(isRealTime=False)
+    simTestData = data_loader.getCandles(sim.coinPair, 60, start=(datetime.datetime.now() - datetime.timedelta(days=3)).isoformat(), save=True)[['open']]
+    for (time, price) in simTestData.iterrows():
+        price = price.item()
+        time = time.isoformat()
+        sim.process({
+                'price': price,
+                'time': time
+        })

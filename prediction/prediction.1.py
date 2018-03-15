@@ -107,7 +107,7 @@ model_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/model.hdf5'.
 checkpointer = ModelCheckpoint(filepath=checkpoint_path, verbose=1, save_best_only=True)
 
 adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
-model.compile(loss='mean_squared_error', optimizer=adam, metrics=['MSE', 'MAE'])
+model.compile(loss='mean_absolute_percentage_error', optimizer=adam, metrics=['MAPE'])
 
 if args.resume and os.path.isfile(checkpoint_path) and os.path.isfile(model_path):
     model = load_model(model_path)
