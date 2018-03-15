@@ -14,6 +14,7 @@ import plotly.graph_objs as go
 from keras.optimizers import Adam
 import logging
 
+from keras.models import load_model
 from keras.callbacks import ModelCheckpoint
 from keras.models import Sequential
 from keras.layers import Dense
@@ -24,7 +25,7 @@ from sklearn.externals import joblib
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-checkpoint_name = 'model2'
+checkpoint_name = 'model2.256lstmx2.stateful'
 
 if not os.path.isdir(os.path.join(os.path.dirname(__file__), 'checkpoint/{}'.format(checkpoint_name))):
     dire = os.path.join(os.path.dirname(__file__), 'checkpoint/')
@@ -92,8 +93,9 @@ print(testX.shape)
 
 # create and fit the LSTM network
 model = Sequential()
-model.add(LSTM(4, input_shape=(1, look_back)))
-# model.add(LSTM(4, batch_input_shape=(1, 1, look_back), stateful=True))
+#model.add(LSTM(256, input_shape=(1, look_back), return_sequences=True))
+model.add(LSTM(256, batch_input_shape=(1, 1, look_back), stateful=True, return_sequences=True))
+model.add(LSTM(256, stateful=True))
 model.add(Dense(1))
 
 model.summary()
@@ -104,23 +106,22 @@ checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/weights
 model_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/model.hdf5'.format(checkpoint_name))
 checkpointer = ModelCheckpoint(filepath=checkpoint_path, verbose=1, save_best_only=True)
 
+adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
+model.compile(loss='mean_absolute_percentage_error', optimizer=adam, metrics=['MAPE'])
+
 if args.resume and os.path.isfile(checkpoint_path) and os.path.isfile(model_path):
-    model.load(model_path)
+    model = load_model(model_path)
     model.load_weights(checkpoint_path)
     print('Loaded weigths from checkpoint: {}'.format(checkpoint_path))
 else:
     print('No checkpoint found.')
+    model.save(model_path)
 
+"""###Train the model."""
 
-"""###Define the loss and optimizer. Train the model."""
-adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
-model.compile(loss='mean_squared_error', optimizer=adam, metrics=['MSE', 'MAE'])
 
 if not args.visualize:
     model.fit(trainX, trainY, epochs=25, batch_size=1, verbose=1, validation_data=(testX, testY), callbacks=[checkpointer])
-
-model_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/model.hdf5'.format(checkpoint_name))
-model.save(model_path)
 
 """###Now check the predicted values for training and test data"""
 

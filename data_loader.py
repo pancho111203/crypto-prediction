@@ -18,43 +18,52 @@ public_client = gdax.PublicClient()
 #The granularity field must be one of the following values: {60, 300, 900, 3600, 21600, 86400}. 
 #Otherwise, your request will be rejected. 
 #These values correspond to timeslices representing one minute, five minutes, fifteen minutes, one hour, six hours, and one day, respectively.
-def getCandles(coinPair, granularity, start, end, save=True):
+def getCandles(coinPair, granularity, start=None, end=None, save=True):
+    def requestCandles(startTime_, endTime_):
+        logger.info('Getting data from {} to {}'.format(startTime_.isoformat(), endTime_.isoformat()))
+        for attempt in range(0, 10):   
+            if attempt > 0:
+                logger.debug('Attempt {}'.format(attempt+1))
+            candles = public_client.get_product_historic_rates(coinPair, granularity=granularity, start=startTime_.isoformat(), end=endTime_.isoformat())
+            if isinstance(candles, list):
+                candles.reverse()
+                return candles
+            else:
+                logger.error('ERROR requesting candles: {}'.format(candles))
+                logger.error('Trying again')
+                
+        return []
+
+    maxResultsPerCall = 200 # described in https://docs.gdax.com/#get-historic-rates
+    secondsCoveredPerCall = maxResultsPerCall * granularity
+    
+    if granularity != 60 and granularity != 300 and granularity != 900 and granularity != 3600 and granularity != 21600 and granularity != 86400:
+        logger.error('Invalid granularity({}), must be one of the following values: {60, 300, 900, 3600, 21600, 86400}'.format(granularity))
+        return []
+    
+    if not end:
+        endTime = datetime.datetime.now()
+        end = endTime.isoformat()
+    else:
+        endTime = dateparse(end)
+
+    if not start:
+        startTime = endTime - datetime.timedelta(seconds=secondsCoveredPerCall)
+    else:
+        startTime = dateparse(start)
+        start = startTime.isoformat()
+    
+    if endTime < startTime:
+        logger.error('Starting date ({}) is after ending date ({})'.format(start, end))
+        return []
+    
     filename = os.path.join(os.path.dirname(__file__), 'data/candles/{}_{}_{}_{}.json'.format(coinPair, granularity, start, end))
     if os.path.isfile(filename):
         logger.info('Loading data from file: {}'.format(filename))
         with open(filename, 'r') as f:
             allCandles = json.load(f)
         
-    else:
-        def requestCandlesAndSave(startTime_, endTime_):
-            logger.info('Getting data from {} to {}'.format(startTime_.isoformat(), endTime_.isoformat()))
-            for attempt in range(0, 10):   
-                if attempt > 0:
-                    logger.debug('Attempt {}'.format(attempt+1))
-                candles = public_client.get_product_historic_rates(coinPair, granularity=granularity, start=startTime_.isoformat(), end=endTime_.isoformat())
-                if isinstance(candles, list):
-                    candles.reverse()
-                    return candles
-                else:
-                    logger.error('ERROR requesting candles: {}'.format(candles))
-                    logger.error('Trying again')
-                    
-            return []
-            
-        if granularity != 60 and granularity != 300 and granularity != 900 and granularity != 3600 and granularity != 21600 and granularity != 86400:
-            logger.error('Invalid granularity({}), must be one of the following values: {60, 300, 900, 3600, 21600, 86400}'.format(granularity))
-            return []
-        
-        startTime = dateparse(start)
-        endTime = dateparse(end)
-        
-        if endTime < startTime:
-            logger.error('Starting date ({}) is after ending date ({})'.format(start, end))
-            return []
-    
-        maxResultsPerCall = 200 # described in https://docs.gdax.com/#get-historic-rates
-        secondsCoveredPerCall = maxResultsPerCall * granularity
-        
+    else:            
         expectedResultsLength = int((endTime - startTime).total_seconds() / granularity) + 1
         numberOfRequests = math.ceil(expectedResultsLength / maxResultsPerCall)
         logger.debug('expectedResultsLength: {}'.format(expectedResultsLength))
@@ -65,16 +74,16 @@ def getCandles(coinPair, granularity, start, end, save=True):
         for i in range(0, numberOfRequests - 1):
             currentEndTime = currentStartTime + datetime.timedelta(seconds=secondsCoveredPerCall)
     
-            allCandles += requestCandlesAndSave(currentStartTime, currentEndTime)
+            allCandles += requestCandles(currentStartTime, currentEndTime)
                 
             currentStartTime = currentEndTime + datetime.timedelta(seconds=granularity)
             
         # last request only takes until endTime
-        allCandles += requestCandlesAndSave(currentStartTime, endTime)
+        allCandles += requestCandles(currentStartTime, endTime)
         
-        if save:
-            if not(os.path.isdir("data")):
-                os.system("mkdir data; cd data; mkdir candles")
+        if save is True:
+            if not(os.path.exists(os.path.join(os.path.dirname(__file__), 'data/candles'))):
+                os.makedirs(os.path.join(os.path.dirname(__file__), 'data/candles'))
     
             logger.info('Saving data on file: {}'.format(filename))
             with open(filename, 'a+') as f:
