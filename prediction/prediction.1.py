@@ -42,7 +42,7 @@ args = parser.parse_args()
 
 
 """Get Data"""
-dataset = data_loader.getCandles('ETH-USD', 60, '2018-03-07T00:00:25+01:00', '2018-03-08T00:00:25+01:00')[['open']]
+dataset = data_loader.getCandles('ETH-USD', 60, '2018-01-01T00:00:25+01:00', '2018-03-11T00:00:25+01:00')[['open']]
 
 """###Normalize data"""
 

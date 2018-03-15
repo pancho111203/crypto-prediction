@@ -16,7 +16,7 @@ class Predict_model(object):
         if os.path.isfile(model_from_path) and os.path.isfile(weights_path):
             self.model = load_model(model_from_path)
             self.model.load_weights(weights_path)
-            self.adam = Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
+            self.adam = Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
             self.model.compile(loss='mean_squared_error', optimizer=self.adam)
             self.graph = tf.get_default_graph()
         else:
@@ -35,7 +35,7 @@ class Predict_model(object):
         return xt[0,0]
 
     def buyer(self, xt):
-        delta = 0.0001
+        delta = 0.002
         if xt > 1 + delta:
             return 'buy'
         elif xt < 1 - delta:
