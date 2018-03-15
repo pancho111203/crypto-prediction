@@ -10,8 +10,8 @@ import pandas as pd
 
 
 model = 'model2.256lstmx2.stateful'
-statsFile = 'stats_2018-03-15T13:34:42.335998.json'
-dataFile = 'ETH-USD_60_2018-03-12T13:50:32.992601_2018-03-15T13:50:32.992625.json'
+statsFile = 'stats_2018-03-15T17:46:28.218736.json'
+dataFile = 'ETH-USD_60_2018-02-14T00:00:25+01:00_2018-03-14T00:00:25+01:00.json'
 
 with open(os.path.join(os.path.dirname(__file__), '../prediction/checkpoint/{}/{}'.format(model, statsFile)), 'r') as f:
     stats = pd.DataFrame(json.load(f))

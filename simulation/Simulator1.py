@@ -11,6 +11,16 @@ import data_loader
 from model1 import Predict_model
 import gdax
 import datetime
+import pandas as pd
+import argparse
+
+parser = argparse.ArgumentParser(description='Simulator crypto prices')
+parser.add_argument('-r', '--realtime', action='store_const',
+                   const=True, default=False,
+                   help='Only visualize results of previously saved model')
+
+args = parser.parse_args()
+
 modelName = "model2.256lstmx2.stateful"
 
 public_client = gdax.PublicClient()
@@ -53,9 +63,9 @@ class Simulator(object):
                 err = currPrice - self.predictPrice
                 logger.info('Previous prediction error: {}'.format(err))
 
-#            if self.pastPastCurrentPrice and abs(err)>0.09:
-            if self.pastPastCurrentPrice:
-                self.predictor.training(self.pastPastCurrentPrice, self.pastCurrentPrice, currPrice)
+# #            if self.pastPastCurrentPrice and abs(err)>0.09:
+#             if self.pastPastCurrentPrice:
+#                 self.predictor.training(self.pastPastCurrentPrice, self.pastCurrentPrice, currPrice)
 
             self.predictedDelta = self.predictor.get_model(self.pastCurrentPrice, currPrice)
             
@@ -112,20 +122,32 @@ class Simulator(object):
         
 if __name__ == '__main__':
 
+    if args.realtime:
+        logging.basicConfig(level=logging.INFO)
+        sim = Simulator()
+        tickerFeed = TickerFeed(sim.coinPair, 60)
+        tickerFeed.onTickerReceived(sim.process)
+        tickerFeed.run()
+    else:
 
-    logging.basicConfig(level=logging.INFO)
+        # sim = Simulator(isRealTime=False)
+        # simTestData = data_loader.getCandles(sim.coinPair, 60, start=(datetime.datetime.now() - datetime.timedelta(days=3)).isoformat(), save=True)[['open']]
+        # for (time, price) in simTestData.iterrows():
+        #     price = price.item()
+        #     time = time.isoformat()
+        #     sim.process({
+        #             'price': price,
+        #             'time': time
+        #     })
+        logging.basicConfig(level=logging.WARN)
+        sim = Simulator(isRealTime=False)
+        with open(os.path.join(os.path.dirname(__file__), '../data/candles/ETH-USD_60_2018-02-14T00:00:25+01:00_2018-03-14T00:00:25+01:00.json'), 'r') as f:
+            simTestData = pd.DataFrame(json.load(f))
 
-    # sim = Simulator()
-    # tickerFeed = TickerFeed(sim.coinPair, 60)
-    # tickerFeed.onTickerReceived(sim.process)
-    # tickerFeed.run()
-
-    sim = Simulator(isRealTime=False)
-    simTestData = data_loader.getCandles(sim.coinPair, 60, start=(datetime.datetime.now() - datetime.timedelta(days=3)).isoformat(), save=True)[['open']]
-    for (time, price) in simTestData.iterrows():
-        price = price.item()
-        time = time.isoformat()
-        sim.process({
-                'price': price,
-                'time': time
-        })
+        for (key, row) in simTestData.iterrows():
+            time = pd.to_datetime(row[0], unit='s').isoformat()
+            price = row[1]
+            sim.process({
+                    'price': price,
+                    'time': time
+            })

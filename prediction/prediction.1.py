@@ -43,7 +43,7 @@ args = parser.parse_args()
 
 
 """Get Data"""
-dataset = data_loader.getCandles('ETH-USD', 60, '2018-01-01T00:00:25+01:00', '2018-03-11T00:00:25+01:00')[['open']]
+dataset = data_loader.getCandles('ETH-USD', 60, '2018-02-14T00:00:25+01:00', '2018-03-14T00:00:25+01:00')[['open']]
 
 """###Normalize data"""
 
@@ -51,7 +51,8 @@ dataset = data_loader.getCandles('ETH-USD', 60, '2018-01-01T00:00:25+01:00', '20
 dataset1 = dataset.values[:-1]
 dataset2 = dataset.values[1:]
 
-dataset = dataset1/dataset2
+dataset_value = dataset
+dataset = dataset2/dataset1
 """###Split data into training and test. Training is the past, test is the future."""
 
 # split into train and test sets
@@ -93,9 +94,10 @@ print(testX.shape)
 
 # create and fit the LSTM network
 model = Sequential()
-#model.add(LSTM(256, input_shape=(1, look_back), return_sequences=True))
-model.add(LSTM(256, batch_input_shape=(1, 1, look_back), stateful=True, return_sequences=True))
-model.add(LSTM(256, stateful=True))
+model.add(LSTM(256, input_shape=(1, look_back), return_sequences=True))
+model.add(LSTM(256))
+# model.add(LSTM(256, batch_input_shape=(1, 1, look_back), stateful=True, return_sequences=True))
+# model.add(LSTM(256, stateful=True))
 model.add(Dense(1))
 
 model.summary()
@@ -106,8 +108,8 @@ checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/weights
 model_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/model.hdf5'.format(checkpoint_name))
 checkpointer = ModelCheckpoint(filepath=checkpoint_path, verbose=1, save_best_only=True)
 
-adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
-model.compile(loss='mean_absolute_percentage_error', optimizer=adam, metrics=['MAPE'])
+adam = Adam(lr=0.005, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
+model.compile(loss='mape', optimizer=adam, metrics=['MSE', 'MAE'])
 
 if args.resume and os.path.isfile(checkpoint_path) and os.path.isfile(model_path):
     model = load_model(model_path)
@@ -117,11 +119,11 @@ else:
     print('No checkpoint found.')
     model.save(model_path)
 
+
 """###Train the model."""
 
-
 if not args.visualize:
-    model.fit(trainX, trainY, epochs=25, batch_size=1, verbose=1, validation_data=(testX, testY), callbacks=[checkpointer])
+    model.fit(trainX, trainY, epochs=2, batch_size=1, verbose=1, validation_data=(testX, testY), callbacks=[checkpointer])
 
 """###Now check the predicted values for training and test data"""
 
