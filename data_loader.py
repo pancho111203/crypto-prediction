@@ -48,7 +48,7 @@ def getCandles(coinPair, granularity, start=None, end=None, save=True):
         endTime = dateparse(end)
 
     if not start:
-        startTime = endTime - datetime.timedelta(seconds=secondsCoveredPerCall)
+        startTime = endTime - datetime.timedelta(seconds=secondsCoveredPerCall-1)
     else:
         startTime = dateparse(start)
         start = startTime.isoformat()

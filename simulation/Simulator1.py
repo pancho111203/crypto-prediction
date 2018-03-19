@@ -19,6 +19,10 @@ parser.add_argument('-r', '--realtime', action='store_const',
                    const=True, default=False,
                    help='Only visualize results of previously saved model')
 
+parser.add_argument('-p', '--perfect', action='store_const',
+                   const=True, default=False,
+                   help='Use a perfect model to evaluate buyer')
+
 args = parser.parse_args()
 
 modelName = "model2.256lstmx2.stateful"
@@ -30,7 +34,7 @@ class Simulator(object):
         self.initialCrypto = initialCrypto
         self.initialUsd = initialUsd
         self.isRealTime = isRealTime
-        
+
         self.startTime = datetime.datetime.now().isoformat()
         self.usd = initialUsd
         self.crypto = initialCrypto
@@ -55,7 +59,7 @@ class Simulator(object):
             self.pastPastCurrentPrice = self.pastCurrentPrice
             self.pastCurrentPrice = currentPrice
 
-    def process(self, data):
+    def process(self, data, nextData=None):
         currPrice = data['price']
         time = data['time']
         if self.pastCurrentPrice:
@@ -67,26 +71,29 @@ class Simulator(object):
 #             if self.pastPastCurrentPrice:
 #                 self.predictor.training(self.pastPastCurrentPrice, self.pastCurrentPrice, currPrice)
 
-            self.predictedDelta = self.predictor.get_model(self.pastCurrentPrice, currPrice)
-            
+            if not nextData:
+                self.predictedDelta = self.predictor.get_model(self.pastCurrentPrice, currPrice)
+            else:
+                self.predictedDelta = nextData['delta']
+
             logger.info('Current Price: {}'.format(currPrice))
             self.predictPrice = self.predictedDelta*currPrice
             logger.info('Predicted Price: {}'.format(self.predictPrice))
 
             decision = self.predictor.buyer(self.predictedDelta)
-            
+
             # TODO instead of taking price, take best bid for buys and best ask for sells
             if self.isRealTime:
                 price = float(public_client.get_product_ticker(product_id=self.coinPair)['price'])
             else:
                 price = currPrice
-                
+
             if decision == 'buy':
                 self.buy(self.usd * self.buyPercentage, price)
-                
+
             elif decision == 'sell':
                 self.sell(self.crypto * self.buyPercentage, price)
-                
+
             logger.info('Current Holdings:\nUSD: {}\n{}: {}'.format(self.usd, self.cryptoCoin, self.crypto))
 
             currentValue = (price * self.crypto) + self.usd
@@ -103,7 +110,7 @@ class Simulator(object):
         self.pastPastCurrentPrice = self.pastCurrentPrice
         self.pastCurrentPrice =  currPrice
         logger.info("")
-        
+
     def buy(self, amountInUsd, price):
         # TODO take into account exchange fees
         amountInCrypto = amountInUsd / price
@@ -111,7 +118,7 @@ class Simulator(object):
 
         self.usd -= amountInUsd
         self.crypto += amountInCrypto
-        
+
     def sell(self, amountInCrypto, price):
         # TODO take into account exchange fees
         amountInUsd = amountInCrypto * price
@@ -119,7 +126,7 @@ class Simulator(object):
 
         self.usd += amountInUsd
         self.crypto -= amountInCrypto
-        
+
 if __name__ == '__main__':
 
     if args.realtime:
@@ -128,8 +135,25 @@ if __name__ == '__main__':
         tickerFeed = TickerFeed(sim.coinPair, 60)
         tickerFeed.onTickerReceived(sim.process)
         tickerFeed.run()
-    else:
+    elif args.perfect:
+        logging.basicConfig(level=logging.INFO)
+        logging.info('USING A PERFECT MODEL')
+        sim = Simulator(isRealTime=False)
+        simTestData = data_loader.getCandles('ETH-USD', 60, start='2018-02-14T00:00:25+01:00', end='2018-03-14T00:00:25+01:00', save=True)[['open']]
 
+        for i in range(0, len(simTestData) - 1):
+            item = simTestData.iloc[i]
+            price = item[0]
+            time = item.name.isoformat()
+
+            nextItem = simTestData.iloc[i+1]
+            nextPrice = nextItem[0]
+            sim.process({
+                    'price': price,
+                    'time': time
+            }, {'delta': nextPrice/price})
+
+    else:
         # sim = Simulator(isRealTime=False)
         # simTestData = data_loader.getCandles(sim.coinPair, 60, start=(datetime.datetime.now() - datetime.timedelta(days=3)).isoformat(), save=True)[['open']]
         # for (time, price) in simTestData.iterrows():
