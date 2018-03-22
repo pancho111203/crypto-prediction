@@ -111,7 +111,7 @@ class Model(nn.Module):
         self.drop1 = nn.Dropout(p=0.5)
         # TODO start using maxpool
         # TODO replace hardcoded 1020400
-        self.fc1 = nn.Linear(1020400, 512)
+        self.fc1 = nn.Linear(149900, 512)
         self.bn1 = nn.BatchNorm1d(512)
 
         self.drop2 = nn.Dropout(p=0.5)
