@@ -76,10 +76,11 @@ testX = np.array([testX[i-look_back:i] for i in range(look_back, len(test))]).re
 trainY = trainY[look_back:]
 testY = testY[look_back:]
 
+# using unsqueeze because of this: https://github.com/pytorch/pytorch/issues/2539
 trainX = torch.from_numpy(trainX).float()
-trainY = torch.from_numpy(trainY).float()
+trainY = torch.from_numpy(trainY).float().unsqueeze(1)
 testX = torch.from_numpy(testX).float()
-testY = torch.from_numpy(testY).float()
+testY = torch.from_numpy(testY).float().unsqueeze(1)
 
 if use_cuda:
     trainX, trainY, testX, testY = trainX.cuda(), trainY.cuda(), testX.cuda(), testY.cuda()
@@ -185,7 +186,7 @@ def train(epoch):
     
     loss_total = 0
     for i, (X, y) in enumerate(train_dataloader):
-        X, y = Variable(X), Variable(y.float())
+        X, y = Variable(X), Variable(y)
         y_pred = net(X)
 
         loss = criterion(y_pred, y)
@@ -203,7 +204,7 @@ def test(epoch, save=True):
 
     loss_total = 0
     for i, (X, y) in enumerate(test_dataloader):
-        X, y = Variable(X, volatile=True), Variable(y.float())
+        X, y = Variable(X, volatile=True), Variable(y)
         y_pred = net(X)
 
         loss = criterion(y_pred, y)
