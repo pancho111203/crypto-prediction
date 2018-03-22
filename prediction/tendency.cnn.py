@@ -87,8 +87,8 @@ if use_cuda:
 train_dataset = TensorDataset(trainX, trainY)
 test_dataset = TensorDataset(testX, testY)
 
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
 checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/weights.ckpt'.format(checkpoint_name))
 
@@ -99,10 +99,12 @@ class Model(nn.Module):
         self.n_features = n_features
         self.look_back = look_back
 
-        self.kernel_sizes = [3, 5, 10, 25, 50, 100, 1000]
+        self.kernel_sizes = [5, 10, 50, 100, 1000]
         self.cnnLayers = []
         for kernel_size in self.kernel_sizes:
             layer = self.convlayer(kernel_size)
+            if torch.cuda.is_available():
+                layer = layer.cuda()
             self.cnnLayers.append(layer)
         self.cnnLayers.append(self.convlayer(self.look_back, max_pool=False))
 
@@ -141,10 +143,8 @@ class Model(nn.Module):
         batch_size = x.shape[0]
 
         cnn_in = x.view(batch_size, self.n_features, self.look_back)
-        cnn_out = []
-        for cnn_layer in self.cnnLayers:
-            cnn_out.append(cnn_layer(cnn_in))
-        concat_cnns = torch.cat(cnn_out, dim=2)
+#        concat_cnns = torch.cat([layer(cnn_in) for layer in self.cnnLayers], dim=2)
+        concat_cnns = self.cnnLayers[0](cnn_in)
 
         out = concat_cnns.view(batch_size, -1)
         out = self.drop1(out)
@@ -155,7 +155,6 @@ class Model(nn.Module):
 
         out = self.drop3(out)
         out = F.sigmoid(self.fc3(out))
-    
         return out
 
 if args.resume and os.path.isfile(checkpoint_path):
