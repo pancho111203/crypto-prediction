@@ -100,19 +100,16 @@ class Model(nn.Module):
         self.n_features = n_features
         self.look_back = look_back
 
-        self.kernel_sizes = [5, 10, 50, 100, 1000]
-        self.cnnLayers = []
-        for kernel_size in self.kernel_sizes:
-            layer = self.convlayer(kernel_size)
-            if torch.cuda.is_available():
-                layer = layer.cuda()
-            self.cnnLayers.append(layer)
-        self.cnnLayers.append(self.convlayer(self.look_back, max_pool=False))
+        self.cnn_layer_1 = self.convlayer(5)
+        self.cnn_layer_2 = self.convlayer(10)
+        self.cnn_layer_3 = self.convlayer(50)
+        self.cnn_layer_4 = self.convlayer(100)
+        self.cnn_layer_5 = self.convlayer(1000)
+        self.cnn_layer_6 = self.convlayer(self.look_back, max_pool=False)
 
         self.drop1 = nn.Dropout(p=0.5)
-        # TODO start using maxpool
-        # TODO replace hardcoded 1020400
-        self.fc1 = nn.Linear(149900, 512)
+        # TODO replace hardcoded 721100
+        self.fc1 = nn.Linear(721100, 512)
         self.bn1 = nn.BatchNorm1d(512)
 
         self.drop2 = nn.Dropout(p=0.5)
@@ -144,8 +141,7 @@ class Model(nn.Module):
         batch_size = x.shape[0]
 
         cnn_in = x.view(batch_size, self.n_features, self.look_back)
-#        concat_cnns = torch.cat([layer(cnn_in) for layer in self.cnnLayers], dim=2)
-        concat_cnns = self.cnnLayers[0](cnn_in)
+        concat_cnns = torch.cat((self.cnn_layer_1(cnn_in), self.cnn_layer_2(cnn_in), self.cnn_layer_3(cnn_in), self.cnn_layer_4(cnn_in), self.cnn_layer_5(cnn_in), self.cnn_layer_6(cnn_in)), dim=2)
 
         out = concat_cnns.view(batch_size, -1)
         out = self.drop1(out)
