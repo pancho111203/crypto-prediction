@@ -22,6 +22,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import numpy as np
 
 checkpoint_name = 'tendency.cnn'
+print('Starting...')
 #X = random.sample(range(0, 1000), 1000)
 #y = [X[k-2]+2 for (k, v) in enumerate(X)]
 
