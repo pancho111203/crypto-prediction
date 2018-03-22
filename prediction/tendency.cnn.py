@@ -100,12 +100,14 @@ class Model(nn.Module):
         self.n_features = n_features
         self.look_back = look_back
 
+        self.avg_pool = nn.AvgPool1d(2)
+
         self.cnn_layer_1 = self.convlayer(5)
         self.cnn_layer_2 = self.convlayer(10)
         self.cnn_layer_3 = self.convlayer(50)
         self.cnn_layer_4 = self.convlayer(100)
         self.cnn_layer_5 = self.convlayer(1000)
-        self.cnn_layer_6 = self.convlayer(self.look_back, max_pool=False)
+        self.cnn_layer_6 = self.convlayer(3000, max_pool=False)
 
         self.conv_2 = nn.Sequential(
             nn.Conv1d(100, 200, 5, stride=2),
@@ -122,8 +124,8 @@ class Model(nn.Module):
         )
 
         self.drop1 = nn.Dropout(p=0.5)
-        # TODO replace hardcoded 89800
-        self.fc1 = nn.Linear(89800, 512)
+        # TODO replace hardcoded 43000
+        self.fc1 = nn.Linear(43000, 512)
         self.bn1 = nn.BatchNorm1d(512)
 
         self.drop2 = nn.Dropout(p=0.5)
@@ -153,8 +155,9 @@ class Model(nn.Module):
 
     def forward(self, x):
         batch_size = x.shape[0]
+        out = self.avg_pool(x)
 
-        cnn_in = x.view(batch_size, self.n_features, self.look_back)
+        cnn_in = out.view(batch_size, self.n_features, -1)
         concat_cnns = torch.cat((self.cnn_layer_1(cnn_in), self.cnn_layer_2(cnn_in), self.cnn_layer_3(cnn_in), self.cnn_layer_4(cnn_in), self.cnn_layer_5(cnn_in), self.cnn_layer_6(cnn_in)), dim=2)
 
         out = self.conv_2(concat_cnns)
