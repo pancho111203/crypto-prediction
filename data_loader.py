@@ -21,7 +21,7 @@ public_client = gdax.PublicClient()
 def getCandles(coinPair, granularity, start=None, end=None, save=True):
     def requestCandles(startTime_, endTime_):
         logger.info('Getting data from {} to {}'.format(startTime_.isoformat(), endTime_.isoformat()))
-        for attempt in range(0, 10):   
+        for attempt in range(0, 100):   
             if attempt > 0:
                 logger.debug('Attempt {}'.format(attempt+1))
             candles = public_client.get_product_historic_rates(coinPair, granularity=granularity, start=startTime_.isoformat(), end=endTime_.isoformat())
