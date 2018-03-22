@@ -107,9 +107,23 @@ class Model(nn.Module):
         self.cnn_layer_5 = self.convlayer(1000)
         self.cnn_layer_6 = self.convlayer(self.look_back, max_pool=False)
 
+        self.conv_2 = nn.Sequential(
+            nn.Conv1d(100, 200, 5, stride=2),
+            nn.BatchNorm1d(200),
+            nn.ReLU(),
+            nn.MaxPool1d(2)
+        )
+        
+        self.conv_3 = nn.Sequential(
+            nn.Conv1d(200, 200, 5, stride=2),
+            nn.BatchNorm1d(200),
+            nn.ReLU(),
+            nn.MaxPool1d(2)
+        )
+
         self.drop1 = nn.Dropout(p=0.5)
-        # TODO replace hardcoded 721100
-        self.fc1 = nn.Linear(721100, 512)
+        # TODO replace hardcoded 89800
+        self.fc1 = nn.Linear(89800, 512)
         self.bn1 = nn.BatchNorm1d(512)
 
         self.drop2 = nn.Dropout(p=0.5)
@@ -143,7 +157,10 @@ class Model(nn.Module):
         cnn_in = x.view(batch_size, self.n_features, self.look_back)
         concat_cnns = torch.cat((self.cnn_layer_1(cnn_in), self.cnn_layer_2(cnn_in), self.cnn_layer_3(cnn_in), self.cnn_layer_4(cnn_in), self.cnn_layer_5(cnn_in), self.cnn_layer_6(cnn_in)), dim=2)
 
-        out = concat_cnns.view(batch_size, -1)
+        out = self.conv_2(concat_cnns)
+        out = self.conv_3(out)
+        
+        out = out.view(batch_size, -1)
         out = self.drop1(out)
         out = F.relu(self.bn1(self.fc1(out)))
 
@@ -170,6 +187,8 @@ if use_cuda:
     net.cuda()
     net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
     cudnn.benchmark = True
+
+print('Model params: {}'.format(sum([param.nelement() for param in net.parameters()])))
 
 criterion = nn.MSELoss()
 optimizer = optim.Adam(net.parameters(), lr=args.lr)
