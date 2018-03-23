@@ -9,6 +9,7 @@ import gdax
 import math
 import json
 import pandas as pd
+import time
 
 public_client = gdax.PublicClient()
 
@@ -24,17 +25,21 @@ def getCandles(coinPair, granularity, start=None, end=None, save=True):
         for attempt in range(0, 100):   
             if attempt > 0:
                 logger.debug('Attempt {}'.format(attempt+1))
-            candles = public_client.get_product_historic_rates(coinPair, granularity=granularity, start=startTime_.isoformat(), end=endTime_.isoformat())
+            try:
+                candles = public_client.get_product_historic_rates(coinPair, granularity=granularity, start=startTime_.isoformat(), end=endTime_.isoformat())
+            except:
+                candles = None
             if isinstance(candles, list):
                 candles.reverse()
                 return candles
             else:
                 logger.error('ERROR requesting candles: {}'.format(candles))
                 logger.error('Trying again')
+                time.sleep(5)
                 
         return []
 
-    maxResultsPerCall = 200 # described in https://docs.gdax.com/#get-historic-rates
+    maxResultsPerCall = 300 # described in https://docs.gdax.com/#get-historic-rates
     secondsCoveredPerCall = maxResultsPerCall * granularity
     
     if granularity != 60 and granularity != 300 and granularity != 900 and granularity != 3600 and granularity != 21600 and granularity != 86400:

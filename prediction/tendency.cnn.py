@@ -41,7 +41,8 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 best_loss = 99999
 
 ###Load data
-dataset = data_loader.getCandles('ETH-USD', 60, start='2018-02-14T00:00:25+01:00', end='2018-03-14T00:00:25+01:00', save=True)
+dataset = data_loader.getCandles('ETH-USD', 60, start='2016-10-14T00:00:25+01:00', end='2018-03-22T00:00:25+01:00', save=True)
+#dataset = data_loader.getCandles('ETH-USD', 60, start='2016-10-14T00:00:25+01:00', end='2018-03-22T00:00:25+01:00', save=True)
 #dataset = data_loader.getCandles('ETH-USD', 60, start='2018-03-12T13:19:54.527842', end='2018-03-15T13:19:54.527861', save=True)
 
 addTendency(dataset, threshold=3)
@@ -212,7 +213,6 @@ def train(epoch):
         optimizer.step()
 
         loss_total += loss.data[0]
-        print('Epoch {}: {}'.format(i, loss.data[0]))
 
     print('TRAIN: Avg Loss: {}'.format(loss_total / len(train_dataloader)))
 
