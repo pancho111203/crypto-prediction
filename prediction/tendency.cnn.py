@@ -48,11 +48,11 @@ dataset = data_loader.getCandles('ETH-USD', 60, start='2018-02-14T00:00:25+01:00
 
 addTendency(dataset, threshold=3)
 
-scaler = StandardScaler()
-scaler.fit(dataset[['open', 'volume']])
-t = scaler.transform(dataset[['open', 'volume']])
-tdf = pd.DataFrame(t, columns=['open_norm', 'vol_norm'], index=dataset.index)
-dataset = pd.concat([dataset, tdf], axis=1)
+# scaler = StandardScaler()
+# scaler.fit(dataset[['open', 'volume']])
+# t = scaler.transform(dataset[['open', 'volume']])
+# tdf = pd.DataFrame(t, columns=['open_norm', 'vol_norm'], index=dataset.index)
+# dataset = pd.concat([dataset, tdf], axis=1)
 """###Split data into training and test. Training is the past, test is the future."""
 
 # split into train and test sets
@@ -63,10 +63,10 @@ train, test = dataset.iloc[0:train_size,:], dataset.iloc[train_size:len(dataset)
 # print(len(train), len(test))
 
 """###Convert data into pairs: (features, targets)"""
-trainX = train[['open_norm', 'vol_norm']].values
+trainX = train[['open', 'volume']].values
 trainY = train['tendency'].values
 
-testX = test[['open_norm', 'vol_norm']].values
+testX = test[['open', 'volume']].values
 testY = test['tendency'].values
 
 x_features = 1 if len(trainX.shape) == 1 else trainX.shape[1]
@@ -156,9 +156,27 @@ class Model(nn.Module):
                 nn.ReLU()
             )
 
+    #Standardize on the look_back dimension
+    def standardize(self, x):
+        mean = torch.mean(x, dim=1)
+        std = torch.std(x, dim=1)
+        out = x.transpose(0, 1)
+        out = out.sub(mean)
+        out = out.div(std)
+        return (out.transpose(0, 1), mean, std)
+
+    def unstandardize(self, x, mean, std):
+        out = x.transpose(0, 1)
+        out = out.mul(std)
+        out = out.add(mean)
+        return out.transpose(0, 1)
+
     def forward(self, x):
         batch_size = x.shape[0]
-        out = self.avg_pool(x)
+
+        (out, mean, std) = self.standardize(x)
+
+        out = self.avg_pool(out)
 
         cnn_in = out.view(batch_size, self.n_features, -1)
         concat_cnns = torch.cat((self.cnn_layer_1(cnn_in), self.cnn_layer_2(cnn_in), self.cnn_layer_3(cnn_in), self.cnn_layer_4(cnn_in), self.cnn_layer_5(cnn_in), self.cnn_layer_6(cnn_in)), dim=2)
@@ -175,6 +193,7 @@ class Model(nn.Module):
 
         out = self.drop3(out)
         out = F.sigmoid(self.fc3(out))
+
         return out
 
 if args.resume and os.path.isfile(checkpoint_path):
