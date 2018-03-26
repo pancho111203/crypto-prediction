@@ -11,7 +11,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import TensorDataset
+from torch.utils.data.sampler import SubsetRandomSampler
+from utils.dataloader import DataLoader
 import argparse
 
 import pandas as pd
@@ -41,9 +43,8 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 best_loss = 99999
 
 ###Load data
-dataset = data_loader.getCandles('ETH-USD', 60, start='2016-10-14T00:00:25+01:00', end='2018-03-22T00:00:25+01:00', save=True)
 #dataset = data_loader.getCandles('ETH-USD', 60, start='2016-10-14T00:00:25+01:00', end='2018-03-22T00:00:25+01:00', save=True)
-#dataset = data_loader.getCandles('ETH-USD', 60, start='2018-03-12T13:19:54.527842', end='2018-03-15T13:19:54.527861', save=True)
+dataset = data_loader.getCandles('ETH-USD', 60, start='2018-02-14T00:00:25+01:00', end='2018-03-14T00:00:25+01:00', save=True)
 
 addTendency(dataset, threshold=3)
 
@@ -72,11 +73,6 @@ x_features = 1 if len(trainX.shape) == 1 else trainX.shape[1]
 look_back=6000
 batch_size=100
 
-trainX = np.array([trainX[i-look_back:i] for i in range(look_back, len(trainX))]).reshape(-1, look_back, x_features)
-testX = np.array([testX[i-look_back:i] for i in range(look_back, len(test))]).reshape(-1, look_back, x_features)
-trainY = trainY[look_back:]
-testY = testY[look_back:]
-
 # using unsqueeze because of this: https://github.com/pytorch/pytorch/issues/2539
 trainX = torch.from_numpy(trainX).float()
 trainY = torch.from_numpy(trainY).float().unsqueeze(1)
@@ -89,8 +85,14 @@ if use_cuda:
 train_dataset = TensorDataset(trainX, trainY)
 test_dataset = TensorDataset(testX, testY)
 
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+def collate_fn(_, indices, all_data):
+    X = [all_data.data_tensor[index-look_back:index] for index in indices]
+    y = [all_data.target_tensor[index] for index in indices]
+    return (torch.stack(X), torch.stack(y))
+
+
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, sampler=SubsetRandomSampler(list(range(look_back, len(train_dataset)))), collate_fn=collate_fn)
+test_dataloader = DataLoader(test_dataset, batch_size=batch_size, sampler=SubsetRandomSampler(list(range(look_back, len(test_dataset)))), collate_fn=collate_fn)
 
 checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/weights.ckpt'.format(checkpoint_name))
 
