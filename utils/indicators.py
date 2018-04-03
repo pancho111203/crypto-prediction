@@ -11,7 +11,10 @@ def fill_list_until(lst, until, value):
 
 BULL = 1
 BEAR = 0
-def addTendency(candles, threshold=2):
+def addTendency(candles, threshold=0.05):
+    if threshold > 1 or threshold < 0:
+        raise Exception('Threshold cant be greater than 1, received: {}'.format(threshold))
+        
     first = candles.iloc[0]['close']
     second = candles.iloc[1]['close']
     
@@ -27,8 +30,8 @@ def addTendency(candles, threshold=2):
             if curr < limit:
                 limit = curr
                 fill_list_until(states, i-1, BEAR)
-                
-            if curr > limit + threshold:
+
+            if curr > limit + (limit * threshold):
                 fill_list_until(states, i-1, BULL)
                 state = BULL
                 limit = curr
@@ -38,10 +41,12 @@ def addTendency(candles, threshold=2):
                 limit = curr
                 fill_list_until(states, i-1, BULL)
                 
-            if curr < limit - threshold:
+            if curr < limit - (limit * threshold):
                 fill_list_until(states, i-1, BEAR)
                 state = BEAR
                 limit = curr
                 
     fill_list_until(states, len(candles) - 1, state)
+
+        
     candles['tendency'] = pd.Series(states, index=candles.index)
