@@ -91,7 +91,9 @@ print(testX.shape)
 
 # create and fit the LSTM network
 model = Sequential()
-model.add(LSTM(4, input_shape=(1, look_back)))
+# model.add(LSTM(4, input_shape=(1, look_back)))
+model.add(LSTM(256, input_shape=(1, look_back), return_sequences=True))
+model.add(LSTM(256))
 # model.add(LSTM(4, batch_input_shape=(1, 1, look_back), stateful=True))
 model.add(Dense(1))
 
