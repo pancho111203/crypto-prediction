@@ -112,7 +112,7 @@ checkpointer = ModelCheckpoint(filepath=checkpoint_path, verbose=1, save_best_on
 csv_logger = CSVLogger(checkpoint_path+".log")
 
 adam = Adam(lr=0.005, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
-model.compile(loss='mape', optimizer=adam, metrics=['MSE', 'MAE'])
+model.compile(loss='mape', optimizer=adam, metrics=['MSE', 'MAE', 'MAPE'])
 
 if args.resume and os.path.isfile(checkpoint_path) and os.path.isfile(model_path):
     model = load_model(model_path)

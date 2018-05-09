@@ -118,7 +118,7 @@ else:
 
 """###Define the loss and optimizer. Train the model."""
 adam = Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
-model.compile(loss='mean_squared_error', optimizer=adam, metrics=['MSE', 'MAE'])
+model.compile(loss='mean_squared_error', optimizer=adam, metrics=['MSE', 'MAE', 'MAPE'])
 
 if not args.visualize:
     model.fit(trainX,
