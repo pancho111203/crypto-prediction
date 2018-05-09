@@ -22,6 +22,8 @@ from keras.layers import LSTM
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
 from sklearn.externals import joblib
+from keras.callbacks import CSVLogger
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
@@ -43,7 +45,7 @@ args = parser.parse_args()
 
 
 """Get Data"""
-dataset = data_loader.getCandles('ETH-USD', 60, start='2018-03-12T13:19:54.527842', end='2018-03-15T13:19:54.527861', save=True)[['open']]
+dataset = data_loader.getCandles('ETH-USD', 60, start='2018-02-01T00:00:25+01:00', end='2018-05-01T00:00:25+01:00', save=True)[['open']]
 
 """###Normalize data"""
 
@@ -107,6 +109,7 @@ model.summary()
 checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/weights.hdf5'.format(checkpoint_name))
 model_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/model.hdf5'.format(checkpoint_name))
 checkpointer = ModelCheckpoint(filepath=checkpoint_path, verbose=1, save_best_only=True)
+csv_logger = CSVLogger(checkpoint_path+".log")
 
 adam = Adam(lr=0.005, beta_1=0.9, beta_2=0.999, epsilon=None, decay=1e-6, amsgrad=False)
 model.compile(loss='mape', optimizer=adam, metrics=['MSE', 'MAE'])
@@ -123,7 +126,10 @@ else:
 """###Train the model."""
 
 if not args.visualize:
-    model.fit(trainX, trainY, epochs=2, batch_size=1, verbose=1, validation_data=(testX, testY), callbacks=[checkpointer])
+    model.fit(trainX, trainY, 
+    epochs=2, batch_size=1,
+    verbose=1, validation_data=(testX, testY),
+    callbacks=[checkpointer, csv_logger])
 
 """###Now check the predicted values for training and test data"""
 
