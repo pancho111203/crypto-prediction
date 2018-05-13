@@ -127,7 +127,7 @@ else:
 
 if not args.visualize:
     model.fit(trainX, trainY, 
-    epochs=2, batch_size=1,
+    epochs=20, batch_size=1,
     verbose=1, validation_data=(testX, testY),
     callbacks=[checkpointer, csv_logger])
 

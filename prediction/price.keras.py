@@ -106,7 +106,7 @@ model.summary()
 checkpoint_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/weights.hdf5'.format(checkpoint_name))
 model_path = os.path.join(os.path.dirname(__file__), 'checkpoint/{}/model.hdf5'.format(checkpoint_name))
 checkpointer = ModelCheckpoint(filepath=checkpoint_path, verbose=1, save_best_only=True)
-csv_logger = CSVLogger(checkpoint_path+".log")
+csv_logger = CSVLogger(model_path+".log")
 
 if args.resume and os.path.isfile(checkpoint_path) and os.path.isfile(model_path):
     model.load(model_path)

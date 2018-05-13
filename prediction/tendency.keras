@@ -1,0 +1,10 @@
+/home/secorec/anaconda3/envs/env/lib/python3.6/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+Using TensorFlow backend.
+INFO:data_loader:Loading data from file: ../data/candles/ETH-USD_60_2018-02-01T00:00:25+01:00_2018-05-01T00:00:25+01:00.json
+Traceback (most recent call last):
+  File "tendency.keras.py", line 50, in <module>
+    addTendency(dataset, threshold=3)
+  File "../utils/indicators.py", line 16, in addTendency
+    raise Exception('Threshold cant be greater than 1, received: {}'.format(threshold))
+Exception: Threshold cant be greater than 1, received: 3
