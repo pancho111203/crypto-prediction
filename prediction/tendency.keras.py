@@ -47,7 +47,7 @@ args = parser.parse_args()
 
 """Get Data"""
 dataset = data_loader.getCandles('ETH-USD', 60, start='2018-02-01T00:00:25+01:00', end='2018-05-01T00:00:25+01:00', save=True)
-addTendency(dataset, threshold=3)
+addTendency(dataset, threshold=0.10)
 
 scaler = StandardScaler()
 scaler.fit(dataset[['open', 'volume']])
@@ -115,7 +115,7 @@ else:
 
 if not args.visualize:
     model.fit(trainX, trainY,
-    epochs=10, batch_size=1,
+    epochs=20, batch_size=1,
     verbose=1, validation_data=(testX, testY),
     callbacks=[checkpointer, csv_logger])
 
