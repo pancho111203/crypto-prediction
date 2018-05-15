@@ -4,7 +4,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import dependencies
 
-sys.path.append(dependencies.utils)
+sys.path.append(dependencies.pytorch_utils)
 import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
