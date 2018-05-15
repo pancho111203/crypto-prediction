@@ -2,7 +2,7 @@
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-sys.path.append('/Users/RUBI349500/Projects/ML/pytorch/utils/helpers')
+sys.path.append('/home/paperspace/Projects/utils/helpers')
 
 import logging
 logger = logging.getLogger(__name__)
