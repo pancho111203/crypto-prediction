@@ -2,8 +2,9 @@
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-sys.path.append('/home/paperspace/Projects/utils/helpers')
+import dependencies
 
+sys.path.append(dependencies.utils)
 import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +25,7 @@ from torch.autograd import Variable
 import data_loader
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import numpy as np
-from Metrics import Metrics
+from helpers.Metrics import Metrics
 
 checkpoint_name = 'tendency.simple_cnn'
 print('Starting...')
