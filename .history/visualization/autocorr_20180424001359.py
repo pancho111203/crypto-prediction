@@ -11,20 +11,16 @@ import logging
 from statsmodels.graphics import tsaplots
 
 logging.basicConfig(level=logging.INFO)
-candles = data_loader.getCandles('ETH-USD', 60, start='2016-10-14T00:00:25+01:00', end='2018-03-22T00:00:25+01:00', save=True)
-#candles = data_loader.getCandles('ETH-USD', 60, start='2018-02-14T00:00:25+01:00', end='2018-03-14T00:00:25+01:00', save=True)
+
+candles = data_loader.getCandles('ETH-USD', 60, start='2018-02-14T00:00:25+01:00', end='2018-03-14T00:00:25+01:00', save=True)
 data = candles['open']
 ewma = pd.ewma(data, span=30)
-residual = ewma - data
 
-fig, axes = plt.subplots(nrows=4)
+fig, axes = plt.subplots(nrows=3)
 fig.tight_layout()
 
 axes[0].plot(data)
 pd.plotting.autocorrelation_plot(data, ax=axes[1])
 
-
-axes[2].plot(residual)
-pd.plotting.autocorrelation_plot(residual, ax=axes[3])
-
+axes[2].plot(ewma)
 plt.show()

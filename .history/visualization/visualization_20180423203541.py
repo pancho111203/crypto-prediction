@@ -14,7 +14,7 @@ from utils.plots import candlesPlot, closesPlot, movingAveragePlot, bollingerBan
 ticks = data_loader.getCandles('ETH-USD', 60, start='2016-10-14T00:00:25+01:00', end='2018-03-22T00:00:25+01:00', save=True)
 
 ticks = data_loader.getCandles('ETH-USD', 3600, save=False)
-addTendency(ticks, threshold=0.1)
+addTendency(ticks, threshold=3)
 
 
 fig = tools.make_subplots(rows=2, cols=1)

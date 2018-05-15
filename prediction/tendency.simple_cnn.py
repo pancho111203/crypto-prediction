@@ -26,12 +26,12 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import numpy as np
 from Metrics import Metrics
 
-checkpoint_name = 'tendency.cnn'
+checkpoint_name = 'tendency.simple_cnn'
 print('Starting...')
 #X = random.sample(range(0, 1000), 1000)
 #y = [X[k-2]+2 for (k, v) in enumerate(X)]
 
-metrics = Metrics(os.path.join(os.path.dirname(__file__), '../logs/concat_cnn.json'))
+metrics = Metrics(os.path.join(os.path.dirname(__file__), '../logs/simple_cnn.json'))
 
 if not os.path.isdir(os.path.join(os.path.dirname(__file__), 'checkpoint/{}'.format(checkpoint_name))):
     dire = os.path.join(os.path.dirname(__file__), 'checkpoint/')
@@ -111,30 +111,15 @@ class Model(nn.Module):
 
         self.avg_pool = nn.AvgPool1d(2)
 
-        self.cnn_layer_1 = self.convlayer(5)
-        self.cnn_layer_2 = self.convlayer(10)
-        self.cnn_layer_3 = self.convlayer(50)
-        self.cnn_layer_4 = self.convlayer(100)
-        self.cnn_layer_5 = self.convlayer(1000)
-        self.cnn_layer_6 = self.convlayer(3000, max_pool=False)
-
-        self.conv_2 = nn.Sequential(
-            nn.Conv1d(100, 200, 5, stride=2),
-            nn.BatchNorm1d(200),
-            nn.ReLU(),
-            nn.MaxPool1d(2)
-        )
-        
-        self.conv_3 = nn.Sequential(
-            nn.Conv1d(200, 200, 5, stride=2),
-            nn.BatchNorm1d(200),
-            nn.ReLU(),
-            nn.MaxPool1d(2)
-        )
+        self.conv_0 = self.convlayer(5, 32)
+        self.conv_1 = self.convlayer(5, 64)
+        self.conv_2 = self.convlayer(5, 128)
+        self.conv_3 = self.convlayer(5, 256)
+        self.conv_4 = self.convlayer(5, 512)
 
         self.drop1 = nn.Dropout(p=0.5)
-        # TODO replace hardcoded 43000
-        self.fc1 = nn.Linear(43000, 512)
+
+        self.fc1 = nn.Linear(93*512, 512)
         self.bn1 = nn.BatchNorm1d(512)
 
         self.drop2 = nn.Dropout(p=0.5)
@@ -184,11 +169,11 @@ class Model(nn.Module):
 
         out = self.avg_pool(out)
 
-        cnn_in = out.view(batch_size, self.n_features, -1)
-        concat_cnns = torch.cat((self.cnn_layer_1(cnn_in), self.cnn_layer_2(cnn_in), self.cnn_layer_3(cnn_in), self.cnn_layer_4(cnn_in), self.cnn_layer_5(cnn_in), self.cnn_layer_6(cnn_in)), dim=2)
-
-        out = self.conv_2(concat_cnns)
+        out = self.conv_0(out)
+        out = self.conv_1(out)
+        out = self.conv_2(out)
         out = self.conv_3(out)
+        out = self.conv_4(out)
         
         out = out.view(batch_size, -1)
         out = self.drop1(out)

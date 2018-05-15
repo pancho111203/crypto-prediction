@@ -38,7 +38,7 @@ best_loss = 99999
 
 ###Load data
 dataset = data_loader.getCandles('ETH-USD', 60, start='2018-03-12T13:19:54.527842', end='2018-03-15T13:19:54.527861', save=True)
-addTendency(dataset, threshold=0.05)
+addTendency(dataset, threshold=3)
 
 scaler = StandardScaler()
 scaler.fit(dataset[['open', 'volume']])

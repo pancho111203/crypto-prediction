@@ -11,6 +11,7 @@ import logging
 from statsmodels.graphics import tsaplots
 
 logging.basicConfig(level=logging.INFO)
+ETH-USD_60__
 candles = data_loader.getCandles('ETH-USD', 60, start='2016-10-14T00:00:25+01:00', end='2018-03-22T00:00:25+01:00', save=True)
 #candles = data_loader.getCandles('ETH-USD', 60, start='2018-02-14T00:00:25+01:00', end='2018-03-14T00:00:25+01:00', save=True)
 data = candles['open']
